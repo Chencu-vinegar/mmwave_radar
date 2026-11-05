@@ -8,7 +8,11 @@ venv/
 
 # PyInstaller
 build/
+dist/
 *.manifest
+
+# 备份文件
+*.bak
 
 # IDE / 编辑器
 .idea/
