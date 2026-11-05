@@ -1,0 +1,33 @@
+# WaveSense 本地部署编排：eclipse-mosquitto + homeassistant
+# 部署目标：旧笔记本（全局域网使用，不暴露公网）。
+# 用法：在本文件所在目录执行  docker compose up -d
+# 注意：不要把 1883 / 8123 端口映射到公网路由器。
+
+services:
+  # ---------- 本地 MQTT broker ----------
+  mosquitto:
+    image: eclipse-mosquitto:2.1
+    container_name: wavesense-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"          # MQTT；Python 脚本和 HA 都连这个端口
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/data:/mosquitto/data      # 持久化（订阅状态等）
+      - ./mosquitto/log:/mosquitto/log        # broker 日志
+
+  # ---------- Home Assistant ----------
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: wavesense-ha
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    ports:
+      - "8123:8123"          # HA 网页：笔记本局域网 IP:8123 访问
+    volumes:
+      - ./ha/config:/config  # HA 配置目录（configuration.yaml、数据库都在这里）
+    environment:
+      - TZ=Asia/Shanghai     # 日志时间戳用本地时间
+    # 备注：若需要 HA 自动发现本地设备（后续加蓝牙/Zigbee 网关时），
+    # 可改用 network_mode: host，并删掉上面的 ports 映射。
