@@ -99,6 +99,10 @@ mmwave_radar/
 - pyserial
 - PyInstaller（仅构建需要）
 
+## 更新日志
+
+版本更新记录见 [CHANGELOG.md](./CHANGELOG.md)。
+
 ## 许可
 
 本项目仅用于技术学习与验证。数据格式为对 DEV202H 设备输出逆向所得，不保证与官方协议完全一致。
