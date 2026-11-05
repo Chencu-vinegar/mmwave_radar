@@ -2,6 +2,28 @@
 
 本文档记录本项目的版本更新。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [v0.1.1] - 2026-11-05
+
+修复串口实时「无图像」问题。
+
+### 修复
+
+- **串口实时无图像**：真实串口直读的字节流并非 `.dat` 文件的 `ICLH` 封装，而是 `55 AA` 同步头的 40 字节裸帧（原 `serial_live.py` 只认 `ICLH` 头，导致一帧都解析不出来）。
+  - 帧格式：`55 AA | ch(1B) | cnt_lo(1B) | cnt_hi(1B) | 8×复数(32B, 大端 int16 I/Q) | 尾(3B)`
+  - `ch`：bit7 = RX 通道（0=RX0 / 1=RX1），bit0-3 = chirp 序号高 2 位，bit4-5 = `0x30` 固定
+  - 完整 chirp 序号 = `(ch & 0x0F) * 16 + (cnt_lo >> 4)`，范围 0~63（= 64 chirp/帧），counter 每 chirp +16
+  - 新增帧头严格校验（`ch & 0x70 == 0x30` 且 `cnt_hi == 0x09`），避免把数据区里偶然出现的 `55 AA` 误判为帧头
+- 修复后 `serial_live.py` 将 `55 AA` 裸帧翻译为与 ICLH 一致的 `(counter, channel, 复数)`，下游 chirp 配对与可视化逻辑无需改动；`.dat` 文件解析（`radar_parser.py`）保持 ICLH 解析不变
+
+### 验证
+
+- 真机采样回放：约 3 秒 118 KB 字节流解析出 1479 chirp / 25 帧 / 0 错误；实时连接 5 秒累计 2472 chirp / 40 帧 / 0 错误，RX0/RX1 幅度与相位差正常
+- 分块回放（13 字节/块）与整块回放结果一致，帧边界处理正确
+
+### 部署
+
+- 重新打包 `mmwave-radar.exe`（PyInstaller onefile），旧程序已备份为 `mmwave-radar.exe.bak`
+
 ## [v0.1] - 2026-11-05
 
 初版数据读取与收集软件，围绕矽典微 DEV202H（ICL1122）毫米波雷达实现从原始字节流到可视化、导出的完整链路。
