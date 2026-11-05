@@ -1,0 +1,712 @@
+[
+  {
+    "file": "rest/rest_000.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_20_10_16_59.gz",
+    "frame_start": 1581,
+    "frame_end": 5703,
+    "frames": 4122,
+    "duration_sec": 8.59,
+    "motion_median": 106586932.51666667
+  },
+  {
+    "file": "small/small_000.gz",
+    "scene": "small",
+    "source": "RadarData_2026_10_20_10_17_19.gz",
+    "frame_start": 775,
+    "frame_end": 1777,
+    "frames": 1002,
+    "duration_sec": 2.09,
+    "motion_median": 1613729119.1666667
+  },
+  {
+    "file": "small/small_001.gz",
+    "scene": "small",
+    "source": "RadarData_2026_10_20_10_17_19.gz",
+    "frame_start": 2299,
+    "frame_end": 3585,
+    "frames": 1286,
+    "duration_sec": 2.68,
+    "motion_median": 1635589744.3
+  },
+  {
+    "file": "small/small_002.gz",
+    "scene": "small",
+    "source": "RadarData_2026_10_20_10_17_19.gz",
+    "frame_start": 3868,
+    "frame_end": 5362,
+    "frames": 1494,
+    "duration_sec": 3.11,
+    "motion_median": 1584377063.9499998
+  },
+  {
+    "file": "large/large_000.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_20_10_17_34.gz",
+    "frame_start": 1031,
+    "frame_end": 6004,
+    "frames": 4973,
+    "duration_sec": 10.36,
+    "motion_median": 4409369848.266666
+  },
+  {
+    "file": "rest/rest_001.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_20_10_30_12.gz",
+    "frame_start": 495,
+    "frame_end": 2303,
+    "frames": 1808,
+    "duration_sec": 3.77,
+    "motion_median": 165084442.81666666
+  },
+  {
+    "file": "large/large_001.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_20_10_30_37.gz",
+    "frame_start": 333,
+    "frame_end": 4255,
+    "frames": 3922,
+    "duration_sec": 8.17,
+    "motion_median": 4663081405.1
+  },
+  {
+    "file": "rest/rest_002.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_20_10_50_18.gz",
+    "frame_start": 259,
+    "frame_end": 2373,
+    "frames": 2114,
+    "duration_sec": 4.4,
+    "motion_median": 139989633.51666665
+  },
+  {
+    "file": "small/small_003.gz",
+    "scene": "small",
+    "source": "RadarData_2026_10_20_10_50_28.gz",
+    "frame_start": 512,
+    "frame_end": 3576,
+    "frames": 3064,
+    "duration_sec": 6.38,
+    "motion_median": 1471563325.1999998
+  },
+  {
+    "file": "large/large_002.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_20_10_50_41.gz",
+    "frame_start": 421,
+    "frame_end": 1770,
+    "frames": 1349,
+    "duration_sec": 2.81,
+    "motion_median": 4093374849.0333333
+  },
+  {
+    "file": "large/large_003.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_20_10_50_41.gz",
+    "frame_start": 1971,
+    "frame_end": 3465,
+    "frames": 1494,
+    "duration_sec": 3.11,
+    "motion_median": 4027483879.6833334
+  },
+  {
+    "file": "large/large_004.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_20_10_50_41.gz",
+    "frame_start": 3589,
+    "frame_end": 5026,
+    "frames": 1437,
+    "duration_sec": 2.99,
+    "motion_median": 3519645756.3333335
+  },
+  {
+    "file": "large/large_005.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_20_10_50_41.gz",
+    "frame_start": 5558,
+    "frame_end": 8188,
+    "frames": 2630,
+    "duration_sec": 5.48,
+    "motion_median": 4252885462.7166667
+  },
+  {
+    "file": "large/large_006.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_20_10_51_38.gz",
+    "frame_start": 147,
+    "frame_end": 4760,
+    "frames": 4613,
+    "duration_sec": 9.61,
+    "motion_median": 4523897187.633333
+  },
+  {
+    "file": "rest/rest_003.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_20_10_56_14.gz",
+    "frame_start": 10,
+    "frame_end": 2984,
+    "frames": 2974,
+    "duration_sec": 6.2,
+    "motion_median": 52000402.21666667
+  },
+  {
+    "file": "rest/rest_004.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_20_11_06_19.gz",
+    "frame_start": 1452,
+    "frame_end": 9272,
+    "frames": 7820,
+    "duration_sec": 16.29,
+    "motion_median": 54226655.05
+  },
+  {
+    "file": "rest/rest_005.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_20_11_06_19.gz",
+    "frame_start": 9737,
+    "frame_end": 14225,
+    "frames": 4488,
+    "duration_sec": 9.35,
+    "motion_median": 69908003.65
+  },
+  {
+    "file": "rest/rest_006.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_20_11_07_21.gz",
+    "frame_start": 605,
+    "frame_end": 5926,
+    "frames": 5321,
+    "duration_sec": 11.09,
+    "motion_median": 51702571.9
+  },
+  {
+    "file": "empty/empty_000.gz",
+    "scene": "empty",
+    "source": "RadarData_2026_10_20_11_21_31.gz",
+    "frame_start": 12561,
+    "frame_end": 31449,
+    "frames": 18888,
+    "duration_sec": 39.35,
+    "motion_median": 49391293.0
+  },
+  {
+    "file": "empty/empty_001.gz",
+    "scene": "empty",
+    "source": "RadarData_2026_10_20_11_22_41.gz",
+    "frame_start": 12256,
+    "frame_end": 41967,
+    "frames": 29711,
+    "duration_sec": 61.9,
+    "motion_median": 48851653.7
+  },
+  {
+    "file": "empty/empty_002.gz",
+    "scene": "empty",
+    "source": "direct_serial_empty.gz",
+    "frame_start": 12079,
+    "frame_end": 55620,
+    "frames": 43541,
+    "duration_sec": 90.71,
+    "motion_median": 95281230.0
+  },
+  {
+    "file": "rest/rest_007.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_1711.gz",
+    "frame_start": 4,
+    "frame_end": 2157,
+    "frames": 2153,
+    "duration_sec": 4.49,
+    "motion_median": 42608871.8
+  },
+  {
+    "file": "rest/rest_008.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_1711.gz",
+    "frame_start": 2311,
+    "frame_end": 5592,
+    "frames": 3281,
+    "duration_sec": 6.84,
+    "motion_median": 37706163.86666667
+  },
+  {
+    "file": "rest/rest_009.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_1711.gz",
+    "frame_start": 6560,
+    "frame_end": 8834,
+    "frames": 2274,
+    "duration_sec": 4.74,
+    "motion_median": 41647113.75
+  },
+  {
+    "file": "rest/rest_010.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_1711.gz",
+    "frame_start": 9611,
+    "frame_end": 13873,
+    "frames": 4262,
+    "duration_sec": 8.88,
+    "motion_median": 37048218.78333333
+  },
+  {
+    "file": "rest/rest_011.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_1711.gz",
+    "frame_start": 14771,
+    "frame_end": 18838,
+    "frames": 4067,
+    "duration_sec": 8.47,
+    "motion_median": 77420588.5
+  },
+  {
+    "file": "rest/rest_012.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_1711.gz",
+    "frame_start": 23247,
+    "frame_end": 30504,
+    "frames": 7257,
+    "duration_sec": 15.12,
+    "motion_median": 135669121.7
+  },
+  {
+    "file": "rest/rest_013.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_1711.gz",
+    "frame_start": 30877,
+    "frame_end": 36659,
+    "frames": 5782,
+    "duration_sec": 12.05,
+    "motion_median": 36409848.5
+  },
+  {
+    "file": "rest/rest_014.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_1732.gz",
+    "frame_start": 506,
+    "frame_end": 13825,
+    "frames": 13319,
+    "duration_sec": 27.75,
+    "motion_median": 62290971.06666667
+  },
+  {
+    "file": "rest/rest_015.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_1732.gz",
+    "frame_start": 14290,
+    "frame_end": 24208,
+    "frames": 9918,
+    "duration_sec": 20.66,
+    "motion_median": 64216082.61666667
+  },
+  {
+    "file": "rest/rest_016.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_phone.gz",
+    "frame_start": 181,
+    "frame_end": 2792,
+    "frames": 2611,
+    "duration_sec": 5.44,
+    "motion_median": 82322134.86666666
+  },
+  {
+    "file": "rest/rest_017.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_phone.gz",
+    "frame_start": 5142,
+    "frame_end": 18048,
+    "frames": 12906,
+    "duration_sec": 26.89,
+    "motion_median": 67018155.45
+  },
+  {
+    "file": "rest/rest_018.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_phone.gz",
+    "frame_start": 18188,
+    "frame_end": 19281,
+    "frames": 1093,
+    "duration_sec": 2.28,
+    "motion_median": 59708459.5
+  },
+  {
+    "file": "rest/rest_019.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_phone.gz",
+    "frame_start": 19547,
+    "frame_end": 28492,
+    "frames": 8945,
+    "duration_sec": 18.64,
+    "motion_median": 42531115.166666664
+  },
+  {
+    "file": "rest/rest_020.gz",
+    "scene": "rest",
+    "source": "direct_serial_sit_phone.gz",
+    "frame_start": 28812,
+    "frame_end": 40317,
+    "frames": 11505,
+    "duration_sec": 23.97,
+    "motion_median": 44553361.833333336
+  },
+  {
+    "file": "empty/empty_003.gz",
+    "scene": "empty",
+    "source": "RadarData_2026_10_29_17_19_21.gz",
+    "frame_start": 23025,
+    "frame_end": 34189,
+    "frames": 11164,
+    "duration_sec": 23.26,
+    "motion_median": 79456615.68333334
+  },
+  {
+    "file": "empty/empty_004.gz",
+    "scene": "empty",
+    "source": "RadarData_2026_10_29_17_20_40.gz",
+    "frame_start": 12413,
+    "frame_end": 44145,
+    "frames": 31732,
+    "duration_sec": 66.11,
+    "motion_median": 70185959.36666667
+  },
+  {
+    "file": "rest/rest_021.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 6169,
+    "frame_end": 7436,
+    "frames": 1267,
+    "duration_sec": 2.64,
+    "motion_median": 149145592.5
+  },
+  {
+    "file": "rest/rest_022.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 10421,
+    "frame_end": 11517,
+    "frames": 1096,
+    "duration_sec": 2.28,
+    "motion_median": 130353110.78333333
+  },
+  {
+    "file": "rest/rest_023.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 17411,
+    "frame_end": 18706,
+    "frames": 1295,
+    "duration_sec": 2.7,
+    "motion_median": 145967028.6
+  },
+  {
+    "file": "rest/rest_024.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 20769,
+    "frame_end": 22765,
+    "frames": 1996,
+    "duration_sec": 4.16,
+    "motion_median": 126791049.63333333
+  },
+  {
+    "file": "rest/rest_025.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 22964,
+    "frame_end": 25024,
+    "frames": 2060,
+    "duration_sec": 4.29,
+    "motion_median": 152654200.63333333
+  },
+  {
+    "file": "rest/rest_026.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 25099,
+    "frame_end": 28833,
+    "frames": 3734,
+    "duration_sec": 7.78,
+    "motion_median": 122778744.53333333
+  },
+  {
+    "file": "rest/rest_027.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 31367,
+    "frame_end": 32744,
+    "frames": 1377,
+    "duration_sec": 2.87,
+    "motion_median": 127587406.2
+  },
+  {
+    "file": "rest/rest_028.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 33053,
+    "frame_end": 35126,
+    "frames": 2073,
+    "duration_sec": 4.32,
+    "motion_median": 122389718.16666667
+  },
+  {
+    "file": "rest/rest_029.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 36471,
+    "frame_end": 40531,
+    "frames": 4060,
+    "duration_sec": 8.46,
+    "motion_median": 117762237.25
+  },
+  {
+    "file": "rest/rest_030.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 41562,
+    "frame_end": 43279,
+    "frames": 1717,
+    "duration_sec": 3.58,
+    "motion_median": 118225195.86666666
+  },
+  {
+    "file": "rest/rest_031.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 45074,
+    "frame_end": 49568,
+    "frames": 4494,
+    "duration_sec": 9.36,
+    "motion_median": 143757808.16666666
+  },
+  {
+    "file": "rest/rest_032.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 50442,
+    "frame_end": 51484,
+    "frames": 1042,
+    "duration_sec": 2.17,
+    "motion_median": 131941436.66666667
+  },
+  {
+    "file": "rest/rest_033.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_17_51_42.gz",
+    "frame_start": 52792,
+    "frame_end": 54075,
+    "frames": 1283,
+    "duration_sec": 2.67,
+    "motion_median": 135244042.26666668
+  },
+  {
+    "file": "rest/rest_034.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_18_17_16.gz",
+    "frame_start": 35481,
+    "frame_end": 37173,
+    "frames": 1692,
+    "duration_sec": 3.52,
+    "motion_median": 150902478.35000002
+  },
+  {
+    "file": "rest/rest_035.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_18_17_16.gz",
+    "frame_start": 37427,
+    "frame_end": 38472,
+    "frames": 1045,
+    "duration_sec": 2.18,
+    "motion_median": 154332409.3
+  },
+  {
+    "file": "rest/rest_036.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_18_17_16.gz",
+    "frame_start": 38519,
+    "frame_end": 39770,
+    "frames": 1251,
+    "duration_sec": 2.61,
+    "motion_median": 137816107.73333332
+  },
+  {
+    "file": "rest/rest_037.gz",
+    "scene": "rest",
+    "source": "RadarData_2026_10_29_18_17_16.gz",
+    "frame_start": 48888,
+    "frame_end": 50431,
+    "frames": 1543,
+    "duration_sec": 3.21,
+    "motion_median": 132533172.5
+  },
+  {
+    "file": "large/large_007.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_29_18_32_05.gz",
+    "frame_start": 3235,
+    "frame_end": 4350,
+    "frames": 1115,
+    "duration_sec": 2.32,
+    "motion_median": 5093367990.1
+  },
+  {
+    "file": "large/large_008.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_29_18_32_05.gz",
+    "frame_start": 13072,
+    "frame_end": 15536,
+    "frames": 2464,
+    "duration_sec": 5.13,
+    "motion_median": 3794275039.5
+  },
+  {
+    "file": "large/large_009.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_29_18_32_05.gz",
+    "frame_start": 18626,
+    "frame_end": 20979,
+    "frames": 2353,
+    "duration_sec": 4.9,
+    "motion_median": 4123826441.9666667
+  },
+  {
+    "file": "large/large_010.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_29_18_32_05.gz",
+    "frame_start": 24357,
+    "frame_end": 25648,
+    "frames": 1291,
+    "duration_sec": 2.69,
+    "motion_median": 3581425759.1666665
+  },
+  {
+    "file": "large/large_011.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_29_18_34_01.gz",
+    "frame_start": 3336,
+    "frame_end": 4806,
+    "frames": 1470,
+    "duration_sec": 3.06,
+    "motion_median": 3358337205.75
+  },
+  {
+    "file": "large/large_012.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_29_18_34_01.gz",
+    "frame_start": 9687,
+    "frame_end": 11023,
+    "frames": 1336,
+    "duration_sec": 2.78,
+    "motion_median": 4773076111.683333
+  },
+  {
+    "file": "large/large_013.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_29_18_34_01.gz",
+    "frame_start": 16790,
+    "frame_end": 17823,
+    "frames": 1033,
+    "duration_sec": 2.15,
+    "motion_median": 3282596566.633333
+  },
+  {
+    "file": "large/large_014.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_29_18_34_01.gz",
+    "frame_start": 19441,
+    "frame_end": 20528,
+    "frames": 1087,
+    "duration_sec": 2.26,
+    "motion_median": 4506095114.133333
+  },
+  {
+    "file": "large/large_015.gz",
+    "scene": "large",
+    "source": "RadarData_2026_10_29_18_34_01.gz",
+    "frame_start": 21724,
+    "frame_end": 22920,
+    "frames": 1196,
+    "duration_sec": 2.49,
+    "motion_median": 6401490067.266666
+  },
+  {
+    "file": "rest/rest_038.gz",
+    "scene": "rest",
+    "source": "dat_sit.dat",
+    "frame_start": 1583,
+    "frame_end": 9659,
+    "frames": 8076,
+    "duration_sec": 16.82,
+    "motion_median": 65144593.56666666
+  },
+  {
+    "file": "rest/rest_039.gz",
+    "scene": "rest",
+    "source": "dat_sit.dat",
+    "frame_start": 10549,
+    "frame_end": 21770,
+    "frames": 11221,
+    "duration_sec": 23.38,
+    "motion_median": 54802646.36666667
+  },
+  {
+    "file": "large/large_016.gz",
+    "scene": "large",
+    "source": "dat_walk.dat",
+    "frame_start": 99,
+    "frame_end": 12423,
+    "frames": 12324,
+    "duration_sec": 25.68,
+    "motion_median": 4777118034.416666
+  },
+  {
+    "file": "large/large_017.gz",
+    "scene": "large",
+    "source": "dat_walk.dat",
+    "frame_start": 13118,
+    "frame_end": 15730,
+    "frames": 2612,
+    "duration_sec": 5.44,
+    "motion_median": 3642706042.3
+  },
+  {
+    "file": "large/large_018.gz",
+    "scene": "large",
+    "source": "dat_walk.dat",
+    "frame_start": 16859,
+    "frame_end": 19271,
+    "frames": 2412,
+    "duration_sec": 5.03,
+    "motion_median": 3794729883.866667
+  },
+  {
+    "file": "large/large_019.gz",
+    "scene": "large",
+    "source": "dat_walk.dat",
+    "frame_start": 19656,
+    "frame_end": 22079,
+    "frames": 2423,
+    "duration_sec": 5.05,
+    "motion_median": 4154155804.633333
+  },
+  {
+    "file": "large/large_020.gz",
+    "scene": "large",
+    "source": "dat_walk.dat",
+    "frame_start": 22345,
+    "frame_end": 25232,
+    "frames": 2887,
+    "duration_sec": 6.01,
+    "motion_median": 4026847023.133333
+  },
+  {
+    "file": "large/large_021.gz",
+    "scene": "large",
+    "source": "dat_walk.dat",
+    "frame_start": 26252,
+    "frame_end": 28630,
+    "frames": 2378,
+    "duration_sec": 4.95,
+    "motion_median": 4217493030.35
+  }
+]
