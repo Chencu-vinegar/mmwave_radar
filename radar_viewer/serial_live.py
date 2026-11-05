@@ -2,9 +2,18 @@
 """
 serial_live.py — DEV202H (ICL1122) 毫米波雷达 USB 串口实时读取与解析。
 
-串口输出为连续字节流，帧格式与 .dat 文件一致（ICLH 头）：
-  数据帧 52B（len=40）：含 8 距离 bin 复数（大端 int16）
-  短帧  16B（len=4）：分隔帧，跳过
+串口输出为连续字节流，真实帧格式为「55 AA」同步头的 40 字节裸帧
+（实测：与 .dat 文件的 ICLH 封装不同，串口直读没有 ICLH/ICLT/PU 外壳）：
+
+  帧(40B): 55 AA | ch(1B) | cnt_lo(1B) | cnt_hi(1B) | 数据(32B) | 尾(3B)
+    ch      bit7=RX通道(0=RX0/1=RX1)，bit0-3=chirp序号高2位，bit4-5=0x30 固定
+    cnt_lo  chirp序号低4位 ×16（0x00~0xF0，步进 0x10）
+    cnt_hi  0x09（固定）
+    数据    8 距离 bin 复数（大端 int16 I/Q 交替），与 ICLH 数据帧一致
+    尾      3 字节（校验/固定），忽略
+
+  完整 chirp 序号 = (ch & 0x0F) * 16 + (cnt_lo >> 4)，范围 0~63（=64 chirp/帧）。
+  同序号的 RX0/RX1 配对成一个完整 chirp。
 
 后台线程持续读取串口字节，做帧同步、增量配对（RX0/RX1），
 并维护一个滚动 chirp 缓冲供 GUI 定时取用。
@@ -21,7 +30,12 @@ import serial.tools.list_ports
 import radar_parser as rp
 
 DEFAULT_BAUDRATE = 921600
-FRAME_HDR = b"ICLH"
+FRAME_HDR = b"\x55\xAA"
+FRAME_LEN = 40
+# 帧头后字节校验：ch 的 bit4-5 固定为 0x30、bit6=0；counter 高字节固定 0x09
+_CH_MASK = 0x70
+_CH_FIX = 0x30
+_CNT_HI = 0x09
 
 
 def list_serial_ports():
@@ -154,42 +168,40 @@ class SerialRadarReader:
         while True:
             idx = self.buf.find(FRAME_HDR)
             if idx < 0:
-                if len(self.buf) > 4:
-                    del self.buf[: len(self.buf) - 4]
+                # 找不到帧头：仅保留末尾 1 字节（可能是半个 55 AA 头）
+                if len(self.buf) > 1:
+                    del self.buf[: len(self.buf) - 1]
                 return
             if idx > 0:
                 del self.buf[:idx]
-            if len(self.buf) < 16:
+            # 帧头后至少要有 5 字节（ch + cnt_lo + cnt_hi + 校验位）再做校验
+            if len(self.buf) < 5:
                 return
-            length = self.buf[4]
-            if length == 40:
-                flen = 52
-            elif length == 4:
-                flen = 16
-            else:
-                del self.buf[:1]
+            # 严格校验，避免把数据区里偶然出现的 55 AA 误当帧头
+            ch = self.buf[2]
+            if (ch & _CH_MASK) != _CH_FIX or self.buf[4] != _CNT_HI:
+                del self.buf[:2]
                 continue
-            if len(self.buf) < flen:
+            if len(self.buf) < FRAME_LEN:
                 return
-            frame = bytes(self.buf[:flen])
-            del self.buf[:flen]
+            frame = bytes(self.buf[:FRAME_LEN])
+            del self.buf[:FRAME_LEN]
             self._parse_frame(frame)
 
     def _parse_frame(self, frame):
         self.stats["frame_items"] += 1
-        if len(frame) == 16:
-            return
         try:
-            ch = frame[7]
-            sub = frame[8:12]
-            cnt = ((sub[1] & 0x03) << 8) | sub[2]
-            vals = [struct.unpack(">h", frame[12 + 2 * k:14 + 2 * k])[0] for k in range(16)]
+            chb = frame[2]
+            rx = (chb >> 7) & 1  # 0=RX0, 1=RX1
+            chirp = (chb & 0x0F) * 16 + (frame[3] >> 4)  # 0~63
+            cnt = chirp * 16  # 与 ICLH counter 对齐（每 chirp +16）
+            vals = [struct.unpack(">h", frame[5 + 2 * k:7 + 2 * k])[0] for k in range(16)]
             cplx = np.array([complex(vals[2 * k], vals[2 * k + 1]) for k in range(self.config.n_bin)],
                             dtype=np.complex128)
         except Exception:
             self.stats["errors"] += 1
             return
-        res = self.assembler.add(cnt, ch, cplx)
+        res = self.assembler.add(cnt, rx, cplx)
         if res is not None:
             gch, r0, r1 = res
             self.recent.append((gch, r0, r1))
