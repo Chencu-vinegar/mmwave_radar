@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaveSense 房间监测</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #f4f1ea; color: #1f2937;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px; }
+  header h1 { font-size: 22px; margin: 4px 0; }
+  .meta { font-size: 13px; color: #6b7280; }
+
+  /* 模式切换 */
+  .tabs { display: flex; gap: 10px; margin: 14px 0; }
+  .tab {
+    flex: 1; border: none; border-radius: 14px; padding: 13px 10px; font-size: 15px;
+    font-weight: 700; cursor: pointer; background: #fff; color: #6b7280;
+    border: 1px solid #e5e1d8;
+  }
+  .tab.active { background: #16a34a; color: #fff; border-color: #16a34a; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card {
+    background: #fff; border-radius: 18px; padding: 18px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-top: 14px;
+  }
+  .card.full { grid-column: 1 / -1; }
+  .card h2 { font-size: 14px; color: #6b7280; font-weight: 600; margin: 0 0 12px; }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  select, input[type=text] {
+    flex: 1; min-width: 160px; border: 1px solid #d1d5db; border-radius: 10px;
+    padding: 10px 12px; font-size: 14px; background: #fff; color: #1f2937;
+  }
+  .file-label {
+    flex: 1; min-width: 160px; border: 1px dashed #c9c3b6; border-radius: 10px;
+    padding: 10px 12px; font-size: 13px; color: #6b7280; background: #faf8f3;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .status-line { font-size: 13px; color: #6b7280; margin-top: 10px; }
+  .status-line.err { color: #b91c1c; }
+  .status-line.ok { color: #15803d; }
+
+  .big { display: flex; flex-direction: column; gap: 6px; }
+  .big .state { font-size: 34px; font-weight: 700; line-height: 1.1; }
+  .big .sub { font-size: 14px; color: #6b7280; }
+  .pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 14px; font-weight: 600; color: #fff; width: fit-content; }
+  .present { color: #15803d; }
+  .absent { color: #6b7280; }
+  .lv0 { background: #94a3b8; }
+  .lv1 { background: #d97706; }
+  .lv2 { background: #ea580c; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot.on { background: #16a34a; } .dot.off { background: #9ca3af; }
+
+  canvas { width: 100%; height: 220px; display: block; }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: #6b7280; margin-top: 8px; flex-wrap: wrap; }
+  .legend i { width: 14px; height: 3px; display: inline-block; vertical-align: middle; margin-right: 5px; }
+
+  .toolbar { display: flex; gap: 10px; margin: 14px 0; flex-wrap: wrap; }
+  button.act {
+    border: none; border-radius: 12px; padding: 10px 18px; font-size: 14px;
+    font-weight: 600; cursor: pointer;
+  }
+  .btn-primary { background: #16a34a; color: #fff; }
+  .btn-ghost { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .55; cursor: default; }
+
+  /* 分析报告 */
+  .ana-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .ana-item { background: #faf8f3; border-radius: 12px; padding: 12px; }
+  .ana-item .k { font-size: 12px; color: #6b7280; }
+  .ana-item .v { font-size: 18px; font-weight: 700; margin-top: 3px; }
+  .bar-wrap { margin-top: 14px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 13px; }
+  .bar-row .lab { width: 42px; color: #6b7280; }
+  .bar-track { flex: 1; background: #eee9df; border-radius: 999px; height: 12px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; }
+  .bar-row .pct { width: 52px; text-align: right; font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid #f0ece3; }
+  th { color: #6b7280; font-weight: 600; position: sticky; top: 0; background: #fff; }
+  .table-scroll { max-height: 320px; overflow-y: auto; }
+  .tag { padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #fff; }
+  .empty-tip { color: #9ca3af; font-size: 13px; padding: 12px 4px; }
+  .finish-badge { font-size: 12px; color: #b45309; background: #fef3c7; padding: 3px 10px; border-radius: 999px; }
+
+  @media (max-width: 640px) {
+    .grid { grid-template-columns: 1fr; }
+    .ana-grid { grid-template-columns: repeat(2, 1fr); }
+    .big .state { font-size: 28px; }
+    canvas { height: 190px; }
+    .wrap { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>WaveSense 房间监测</h1>
+    <div class="meta">
+      <span id="runInfo">启动中…</span>
+      <span id="finishBadge" class="finish-badge" style="display:none;">回放已结束</span>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab" id="tabLive" data-panel="live">实时输入</button>
+    <button class="tab" id="tabReplay" data-panel="replay">数据导入</button>
+  </div>
+
+  <!-- 实时输入控制 -->
+  <div class="card" id="panelLive">
+    <h2>实时输入（毫米波雷达串口）</h2>
+    <div class="row">
+      <select id="portSelect"></select>
+      <button class="act btn-ghost" id="refreshPorts">刷新串口</button>
+      <button class="act btn-primary" id="connectBtn">连接并开始</button>
+    </div>
+    <div class="status-line" id="liveStatus">正在读取可用串口…</div>
+  </div>
+
+  <!-- 数据导入控制 -->
+  <div class="card" id="panelReplay" style="display:none;">
+    <h2>数据导入（.gz / .dat 录制文件）</h2>
+    <div class="row">
+      <label class="file-label" id="fileLabel">未选择文件</label>
+      <input type="file" id="fileInput" accept=".gz,.dat" style="display:none;">
+      <button class="act btn-ghost" id="chooseBtn">选择文件</button>
+      <button class="act btn-primary" id="uploadBtn" disabled>上传并分析</button>
+    </div>
+    <div class="status-line" id="uploadStatus">支持授权软件导出的 .gz 或原始 .dat 二进制录制。</div>
+  </div>
+
+  <!-- 分析报告 -->
+  <div class="card" id="analysisCard" style="display:none;">
+    <h2>数据分析报告</h2>
+    <div class="ana-grid" id="anaGrid"></div>
+    <div class="bar-wrap">
+      <div class="bar-row"><span class="lab">不动</span><span class="bar-track"><span class="bar-fill lv0" id="b0"></span></span><span class="pct" id="p0"></span></div>
+      <div class="bar-row"><span class="lab">小动</span><span class="bar-track"><span class="bar-fill lv1" id="b1"></span></span><span class="pct" id="p1"></span></div>
+      <div class="bar-row"><span class="lab">大动</span><span class="bar-track"><span class="bar-fill lv2" id="b2"></span></span><span class="pct" id="p2"></span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>在场状态</h2>
+      <div class="big">
+        <div class="state" id="presenceState">—</div>
+        <div class="sub"><span class="dot off" id="presDot"></span><span id="clockText">--:--:--</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>动作分级</h2>
+      <div class="big">
+        <div><span class="pill lv0" id="levelPill">—</span></div>
+        <div class="sub" id="levelSub">等待数据</div>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>实时能量曲线（最近约 5 秒）</h2>
+      <canvas id="chart"></canvas>
+      <div class="legend">
+        <span><i style="background:#2563eb;"></i>距离门短窗</span>
+        <span><i style="background:#ea580c;"></i>动作门短窗</span>
+        <span>纵轴按当前窗口自适应</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="act btn-primary" id="exportBtn">导出 CSV</button>
+    <button class="act btn-ghost" id="clearBtn">清空记录</button>
+  </div>
+
+  <div class="card">
+    <h2>事件记录（进入 / 离开 / 动作变化）</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>时间</th><th>事件</th><th>帧号</th><th>动作</th></tr></thead>
+        <tbody id="eventBody"></tbody>
+      </table>
+      <div class="empty-tip" id="emptyTip">暂无事件</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const LV_CLASS = ["lv0", "lv1", "lv2"];
+let lastEventCount = -1;
+let selectedFile = null;
+let uiMode = "live";       // 用户当前查看的标签页
+let userPicked = false;    // 用户是否手动点过标签页
+
+function fmtSci(v) {
+  if (v == null) return "—";
+  if (v >= 1e9) return (v / 1e9).toFixed(2) + "e9";
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + "e6";
+  return v.toExponential(1);
+}
+function setLine(id, text, cls) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = "status-line" + (cls ? " " + cls : "");
+}
+
+/* ---------- 模式切换（仅切换控制区；高亮跟随用户所选） ---------- */
+function showPanel(which) {
+  uiMode = which;
+  document.getElementById("panelLive").style.display = which === "live" ? "block" : "none";
+  document.getElementById("panelReplay").style.display = which === "replay" ? "block" : "none";
+  document.getElementById("tabLive").classList.toggle("active", which === "live");
+  document.getElementById("tabReplay").classList.toggle("active", which === "replay");
+}
+document.getElementById("tabLive").addEventListener("click", function () {
+  userPicked = true; showPanel("live");
+});
+document.getElementById("tabReplay").addEventListener("click", function () {
+  userPicked = true; showPanel("replay");
+});
+
+/* ---------- 实时串口 ---------- */
+async function loadPorts() {
+  try {
+    const r = await fetch("/api/serial/ports");
+    const data = await r.json();
+    const sel = document.getElementById("portSelect");
+    sel.innerHTML = "";
+    if (!data.ports.length) {
+      setLine("liveStatus", "没有可用串口：请接好雷达和 USB 转串口模组，再点刷新。", "err");
+      return;
+    }
+    data.ports.forEach(function (p) {
+      const opt = document.createElement("option");
+      opt.value = p.device;
+      opt.textContent = p.device + (p.desc ? "（" + p.desc + "）" : "");
+      sel.appendChild(opt);
+    });
+    setLine("liveStatus", "找到 " + data.ports.length + " 个串口，选择后点连接。");
+  } catch (e) {
+    setLine("liveStatus", "读取串口失败：" + e, "err");
+  }
+}
+document.getElementById("refreshPorts").addEventListener("click", loadPorts);
+document.getElementById("connectBtn").addEventListener("click", async function () {
+  const port = document.getElementById("portSelect").value;
+  setLine("liveStatus", "正在连接 " + port + " …");
+  try {
+    const r = await fetch("/api/mode/live", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ port: port })
+    });
+    const data = await r.json();
+    if (data.ok) { userPicked = true; showPanel("live");
+      setLine("liveStatus", "已连接 " + data.port + "，正在实时接收雷达数据。", "ok"); }
+    else { setLine("liveStatus", data.error || "连接失败", "err"); }
+  } catch (e) { setLine("liveStatus", "连接失败：" + e, "err"); }
+});
+
+/* ---------- 文件导入 ---------- */
+document.getElementById("chooseBtn").addEventListener("click", function () {
+  document.getElementById("fileInput").click();
+});
+document.getElementById("fileInput").addEventListener("change", function () {
+  selectedFile = this.files[0] || null;
+  document.getElementById("fileLabel").textContent = selectedFile ? selectedFile.name : "未选择文件";
+  document.getElementById("uploadBtn").disabled = !selectedFile;
+});
+document.getElementById("uploadBtn").addEventListener("click", async function () {
+  if (!selectedFile) return;
+  const fd = new FormData();
+  fd.append("file", selectedFile);
+  setLine("uploadStatus", "正在上传并解析 " + selectedFile.name + " …");
+  document.getElementById("uploadBtn").disabled = true;
+  try {
+    const r = await fetch("/api/upload", { method: "POST", body: fd });
+    const data = await r.json();
+    if (data.ok) {
+      userPicked = true; showPanel("replay");
+      setLine("uploadStatus", "已上传 " + data.filename + "（" + data.bytes + " 字节），开始回放分析。", "ok");
+    } else {
+      setLine("uploadStatus", data.error || "上传失败", "err");
+    }
+  } catch (e) {
+    setLine("uploadStatus", "上传失败：" + e, "err");
+  }
+  document.getElementById("uploadBtn").disabled = false;
+});
+
+/* ---------- 分析报告 ---------- */
+function renderAnalysis(a) {
+  const card = document.getElementById("analysisCard");
+  if (!a) { card.style.display = "none"; return; }
+  card.style.display = "block";
+  const items = [
+    ["数据文件", a.source_name],
+    ["总帧数", a.total_frames],
+    ["时长(秒)", a.duration_sec],
+    ["有人占比(%)", a.present_ratio],
+    ["进入次数", a.enter_count],
+    ["离开次数", a.leave_count],
+    ["最终状态", a.final_presence ? "有人" : "无人"],
+    ["结束时间", a.wall_end.slice(11)]
+  ];
+  document.getElementById("anaGrid").innerHTML = items.map(function (it) {
+    return '<div class="ana-item"><div class="k">' + it[0] + '</div><div class="v">' + it[1] + '</div></div>';
+  }).join("");
+  const keys = ["不动", "小动", "大动"];
+  for (let i = 0; i < 3; i++) {
+    const v = a.level_dist[keys[i]];
+    document.getElementById("b" + i).style.width = v + "%";
+    document.getElementById("p" + i).textContent = v + "%";
+  }
+}
+
+/* ---------- 状态与曲线 ---------- */
+function updateStatus(s) {
+  const modeText = s.mode === "live" ? "实时采集" : "文件回放";
+  document.getElementById("runInfo").textContent =
+    "运行 " + s.uptime + "s · 帧 " + s.frame_count + " · 事件 " + s.event_count +
+    " · " + modeText + (s.source_name ? "：" + s.source_name : "");
+  document.getElementById("finishBadge").style.display = s.finished ? "inline-block" : "none";
+  if (!userPicked && s.mode) showPanel(s.mode);
+
+  const L = s.latest;
+  if (L) {
+    const ps = document.getElementById("presenceState");
+    ps.textContent = L.presence ? "有人" : "无人";
+    ps.className = "state " + (L.presence ? "present" : "absent");
+    const dot = document.getElementById("presDot");
+    dot.className = "dot " + (L.presence ? "on" : "off");
+    document.getElementById("clockText").textContent = L.wall_clock || "";
+    const pill = document.getElementById("levelPill");
+    pill.textContent = L.motion_label;
+    pill.className = "pill " + LV_CLASS[L.motion_level];
+    document.getElementById("levelSub").textContent =
+      "动作门 " + fmtSci(L.short_motion_energy) + " · 距离门 " + fmtSci(L.short_range_energy);
+  }
+}
+
+function drawChart(series) {
+  const canvas = document.getElementById("chart");
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth, cssH = canvas.clientHeight;
+  if (canvas.width !== cssW * dpr) { canvas.width = cssW * dpr; canvas.height = cssH * dpr; }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+  if (!series || series.length < 2) return;
+
+  const n = series.length;
+  const padL = 8, padR = 8, padT = 10, padB = 14;
+  const w = cssW - padL - padR, h = cssH - padT - padB;
+  let maxV = 1;
+  for (const p of series) {
+    if (p.range > maxV) maxV = p.range;
+    if (p.motion > maxV) maxV = p.motion;
+  }
+  ctx.fillStyle = "rgba(22,163,74,0.07)";
+  let segStart = null;
+  for (let i = 0; i < n; i++) {
+    const x = padL + (i / (n - 1)) * w;
+    if (series[i].presence) {
+      if (segStart === null) segStart = x;
+    } else if (segStart !== null) {
+      ctx.fillRect(segStart, padT, x - segStart, h); segStart = null;
+    }
+  }
+  if (segStart !== null) ctx.fillRect(segStart, padT, padL + w - segStart, h);
+
+  function line(key, color) {
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const x = padL + (i / (n - 1)) * w;
+      const y = padT + h - (series[i][key] / maxV) * h;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.stroke();
+  }
+  line("range", "#2563eb");
+  line("motion", "#ea580c");
+  ctx.fillStyle = "#9ca3af"; ctx.font = "10px sans-serif";
+  ctx.fillText(fmtSci(maxV), padL, padT + 8);
+}
+
+function renderTable(events) {
+  const body = document.getElementById("eventBody");
+  const tip = document.getElementById("emptyTip");
+  if (!events.length) { body.innerHTML = ""; tip.style.display = "block"; return; }
+  tip.style.display = "none";
+  body.innerHTML = events.slice().reverse().map(function (e) {
+    return "<tr><td>" + e.time + "</td><td>" + e.kind + "</td><td>" + e.frame +
+      '</td><td><span class="tag ' + LV_CLASS[e.level] + '">' + e.label + "</span></td></tr>";
+  }).join("");
+}
+
+async function loadEvents() {
+  const r = await fetch("/api/events");
+  renderTable(await r.json());
+}
+
+async function poll() {
+  try {
+    const r = await fetch("/api/state");
+    const s = await r.json();
+    updateStatus(s);
+    drawChart(s.series);
+    renderAnalysis(s.analysis);
+    if (s.event_count !== lastEventCount) { lastEventCount = s.event_count; loadEvents(); }
+  } catch (e) {}
+}
+
+document.getElementById("clearBtn").addEventListener("click", async function () {
+  await fetch("/api/events/clear", { method: "POST" });
+  lastEventCount = 0; loadEvents();
+});
+document.getElementById("exportBtn").addEventListener("click", function () {
+  window.location.href = "/api/events/export";
+});
+
+loadPorts();
+showPanel("live");
+poll();
+setInterval(poll, 250);
+window.addEventListener("resize", function () { poll(); });
+</script>
+</body>
+</html>

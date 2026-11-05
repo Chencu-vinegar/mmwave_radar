@@ -1,14 +1,4 @@
-# WaveSense MVP 依赖
-# 安装命令：python -m pip install -r requirements.txt
-
-# MQTT 客户端：A4 把 presence / people_count 发布到本地 Mosquitto
-paho-mqtt>=2.0,<3.0
-
-# YAML 配置解析：读取 config/config.yaml
+numpy>=1.24
+paho-mqtt>=2.0
 PyYAML>=6.0
-
-# 离线样本分析（B1）：画三类距离门能量对比图；运行时判定/发布链路不需要它
-matplotlib>=3.8
-
-# 实时串口（B2）：实时帧解析粘包用
-pyserial>=3.5
+pyserial>=3.5   # 实时串口

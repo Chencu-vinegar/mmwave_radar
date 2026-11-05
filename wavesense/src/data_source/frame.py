@@ -1,25 +1,42 @@
-# -*- coding: utf-8 -*-
-"""frame.py —— 统一帧结构 Frame。
+"""统一帧结构（基于 DEV202 真实二进制数据）。
 
-判定算法（detector）只认这个结构，不直接依赖授权软件导出格式或串口字节；
-将来拿到真实格式，只需要在数据源里把原始数据“翻译”成 Frame。
+一个逻辑帧 = 同一时刻两通道（ch0/ch1）的有效载荷，各 18 个 int16。
+有效载荷布局（经实测核对）：
+    位置 0-5   ：6 个距离门（静态目标也有能量）
+    位置 6-15  ：10 个动作/速度门（不动时贴近底噪，动作时抬升）
+    位置 16    ：参考字段
+    位置 17    ：固定常量（非数据）
 """
+from dataclasses import dataclass
 
-from dataclasses import dataclass, field
+import numpy as np
+
+RANGE_POS = list(range(0, 6))
+MOTION_POS = list(range(6, 16))
+N_PAYLOAD = 18
 
 
 @dataclass
 class Frame:
-    """一帧雷达数据的统一中间结构。
+    """单逻辑帧。
 
-    属性:
-        timestamp:    帧时间戳（秒，float）。
-        range_energy: 1DFFT 各距离门能量，长度 = 距离门数；索引即距离门序号。
-        targets:      授权软件给的目标信息列表（距离/角度/速度/状态），没有就空列表。
-        raw:          预留字典，存原始导出字段，方便排查，判定逻辑不读它。
+    index   逻辑帧序号（从 0 起）
+    counter 板上计数器（ch0 原始计数字段，调试用）
+    ch0/ch1 各为形状 (18,) 的 int16 数组
     """
+    index: int
+    counter: int
+    ch0: np.ndarray
+    ch1: np.ndarray
 
-    timestamp: float
-    range_energy: list[float]
-    targets: list[dict] = field(default_factory=list)
-    raw: dict = field(default_factory=dict)
+    @staticmethod
+    def _zone_energy(ch, positions):
+        return float(np.sum(ch[positions].astype(np.float64) ** 2))
+
+    def range_energy(self) -> float:
+        """距离门能量（位置 0-5，两通道合计）：用于存在判定。"""
+        return self._zone_energy(self.ch0, RANGE_POS) + self._zone_energy(self.ch1, RANGE_POS)
+
+    def motion_energy(self) -> float:
+        """动作区能量（位置 6-15，两通道合计）：用于动作分级。"""
+        return self._zone_energy(self.ch0, MOTION_POS) + self._zone_energy(self.ch1, MOTION_POS)

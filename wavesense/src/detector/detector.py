@@ -1,134 +1,167 @@
-# -*- coding: utf-8 -*-
-"""detector.py —— 存在判定核心。
+"""存在与动作判定器（基于 DEV202 直接串口数据标定，2026-10-22）。
 
-A3：运动检测 + 进/出去抖；A3b：叠加静坐判定。
-纯逻辑：不读串口、不发网络，输入统一 Frame，输出判定结果，方便单元测试。
-所有阈值从 config 读，不在代码里硬编码。
+直接串口（不经过授权软件）时，静态人体的信号特征：
+  人静坐时，距离门短窗不是连续高值，而是"周期性稀疏尖峰"——
+  呼吸/身体调整每隔几秒到二十几秒触发一次明显尖峰（约 3-5e9）；
+  尖峰之间，距离门短窗与空房无法区分（人在弱反射/角度盲区，
+  甚至遮挡背景反射，能量可能更低）。
 
-合并规则：最终 presence = 运动有人 OR 静坐有人；静坐期间不得翻成 0。
+状态机：
+  进入（无人→有人）：距离门短窗 > 活动阈值，连续 enter_frames（人进门/坐下有动作）。
+  保持（有人）：      周期性活动尖峰不断重置离开计数。
+  离开（有人→无人）：连续 leave_gap_frames 无活动尖峰（约 25 秒）才判无人。
+
+实测（30 帧短窗，两通道合计，约 480 fps）：
+  空房稳态   距离门短窗约 5-6e8，最大约 1.15e9；动作区约 9e7；
+  静坐       活动尖峰约 3-5e9，尖峰间隔最长约 10852 帧（约 22s）；
+  明显动作   动作区短窗约 1.5-2e9。
 """
-
 from collections import deque
-from statistics import pvariance
+from dataclasses import dataclass
 
-from src.data_source import Frame
+import numpy as np
+
+MOTION_LABELS = ("不动", "小动", "大动")
+
+
+@dataclass
+class Detection:
+    presence: bool
+    motion_level: int            # 0 不动 / 1 小动 / 2 大动
+    motion_label: str
+    range_energy: float          # 本帧距离门
+    short_range_energy: float    # 短窗距离门（活动判据）
+    short_motion_energy: float   # 短窗动作区（动作分级）
+    far_gate_ratio: float        # 短窗远门（门4-5）能量占比
+    frames_since_active: int     # 距上次活动尖峰的帧数
+
+    def as_dict(self):
+        return {
+            "presence": self.presence,
+            "motion_level": self.motion_level,
+            "motion_label": self.motion_label,
+            "range_energy": self.range_energy,
+            "short_range_energy": self.short_range_energy,
+            "short_motion_energy": self.short_motion_energy,
+            "far_gate_ratio": self.far_gate_ratio,
+            "frames_since_active": self.frames_since_active,
+        }
 
 
 class Detector:
-    """存在判定状态机（运动去抖 + 静坐保持）。
+    def __init__(self, cfg):
+        d = cfg.get("detector", {})
+        self.short_win = int(d.get("short_window", 30))
 
-    每帧调用 update(frame)；阈值全部来自构造时传入的 config 字典。
-    """
+        # 活动判据：短窗距离门（空房最大约 1.15e9，静坐尖峰约 3-5e9）
+        self.active_threshold = float(d.get("active_threshold", 1.2e9))
+        self.enter_frames = int(d.get("enter_frames", 5))
 
-    def __init__(self, config: dict):
-        # —— 运动检测阈值（A3）——
-        self.energy_threshold = float(config["energy_threshold"])
-        self.noise_floor = float(config.get("noise_floor", 0.2))
-        self.debounce_enter = int(config["debounce_frames_enter"])
-        self.debounce_leave = int(config["debounce_frames_leave"])
+        # 离开：连续无活动尖峰（静坐最长间隔约 10852，取 12000 留余量）
+        self.leave_gap = int(d.get("leave_gap_frames", 12000))
 
-        # —— 静坐判定阈值（A3b）——
-        self.still_energy_variance = float(config["still_energy_variance"])
-        self.still_persist = int(config["still_persist_frames"])
-        self.still_window = int(config["still_window_frames"])
-        self.still_gate_min = float(config["still_gate_min_energy"])
+        # 动作分级：短窗动作区（纯数据集标定，2026-10-23）
+        self.small_threshold = float(d.get("small_move_threshold", 4.0e8))
+        self.large_threshold = float(d.get("large_move_threshold", 2.6e9))
 
-        # —— 运动去抖内部状态 ——
-        self._motion_presence = 0   # 运动路径自己的有人状态
-        self._enter_streak = 0       # 连续“有人候选”帧数（进入去抖）
-        self._leave_streak = 0       # 连续“无人候选”帧数（离开去抖）
+        # 近门电器过滤：短窗尖峰必须有一定比例能量传播到远门（门4-5）。
+        # 近门电器（饮水机/风扇等）的尖峰只在近门，远门比例 <0.05；
+        # 人呼吸的尖峰通过多径传播到所有门，远门比例通常 >=0.1（纯数据集标定）。
+        self.far_gate_ratio = float(d.get("far_gate_ratio", 0.05))
 
-        # —— 静坐内部状态 ——
-        self._window = deque(maxlen=self.still_window)  # 最近窗口的能量帧
-        self._gate_streaks: dict[int, int] = {}          # 每个门连续占用帧数
-        self._still_present = False
+        # 走动保持：来回走动时转身会进入角度盲区，当下动作门短暂回落。
+        # 用较长记忆窗口统计"强动作帧数"，走动的强动作成簇出现，
+        # 纯静坐的强动作只有孤立几帧（纯数据集标定，2026-10-30）。
+        self.walk_win = int(d.get("walk_window", 3360))
+        self.walk_strong_threshold = float(d.get("walk_strong_threshold", 2.0e9))
+        self.walk_strong_frames = int(d.get("walk_strong_frames", 20))
 
-        # —— 对外输出的最终状态 ——
-        self.presence = 0
+        self.short_gate_q = deque(maxlen=self.short_win)
+        self.short_range_q = deque(maxlen=self.short_win)
+        self.short_motion_q = deque(maxlen=self.short_win)
+        self.walk_motion_q = deque(maxlen=self.walk_win)
+        self.presence = False
+        self.enter_cnt = 0
+        self.gap = 0
 
-    def update(self, frame: Frame) -> dict:
-        """喂入一帧，返回本轮判定结果。
+    def reset(self):
+        self.short_gate_q.clear()
+        self.short_range_q.clear()
+        self.short_motion_q.clear()
+        self.walk_motion_q.clear()
+        self.presence = False
+        self.enter_cnt = 0
+        self.gap = 0
 
-        返回:
-            {"presence": 0|1, "people_count": 0|1|2|None, "changed": bool}
-            changed=True 表示这一帧最终 presence 发生翻转（供日志/MQTT 使用）。
-        """
-        old_presence = self.presence
+    def update(self, frame):
+        rng = frame.range_energy()
+        motion = frame.motion_energy()
 
-        motion = self._motion_step(self._is_candidate(frame))
-        still = self._still_step(frame)
+        # 各距离门能量（float64，避免 int16 平方溢出）
+        c0 = frame.ch0.astype(np.float64)
+        c1 = frame.ch1.astype(np.float64)
+        gates = np.array([c0[p] ** 2 + c1[p] ** 2 for p in range(6)])
+        self.short_gate_q.append(gates)
+        self.short_range_q.append(rng)
+        self.short_motion_q.append(motion)
 
-        # 合并：运动有人 或 静坐有人 → 最终有人；静坐期间不会被运动路径翻成 0
-        self.presence = 1 if (motion or still) else 0
-        changed = self.presence != old_presence
+        short_range = float(np.mean(self.short_range_q))
+        short_motion = float(np.mean(self.short_motion_q))
+        # 走动记忆：存每帧的短窗动作门，用于统计近期强动作帧数
+        self.walk_motion_q.append(short_motion)
 
-        return {
-            "presence": self.presence,
-            "people_count": self._count_people(frame),
-            "changed": changed,
-        }
+        # 远门比例：短窗内门4-5能量占比（近门电器接近 0，人呼吸约 0.1-0.4）
+        gate_sum = np.sum(self.short_gate_q, axis=0)
+        gate_total = float(gate_sum.sum())
+        far_ratio = float((gate_sum[4] + gate_sum[5]) / gate_total) if gate_total > 0 else 0.0
 
-    # ---------- 运动路径（A3） ----------
+        # 有效尖峰：距离门超阈值，且能量传播到远门（排除近门电器）
+        active = short_range > self.active_threshold and far_ratio >= self.far_gate_ratio
 
-    def _motion_step(self, candidate: int) -> int:
-        """运动去抖状态机，返回运动路径的有人状态 0/1。"""
-        if self._motion_presence == 0:
-            if candidate:
-                self._enter_streak += 1
-                self._leave_streak = 0
-                if self._enter_streak >= self.debounce_enter:
-                    self._motion_presence = 1
+        if not self.presence:
+            # 进入：人进门/坐下，距离门短窗连续超阈值
+            if active:
+                self.enter_cnt += 1
+                if self.enter_cnt >= self.enter_frames:
+                    self.presence = True
+                    self.gap = 0
+                    self.enter_cnt = 0
             else:
-                self._enter_streak = 0
+                self.enter_cnt = 0
         else:
-            if candidate:
-                self._leave_streak = 0
-                self._enter_streak = 0
+            # 保持：活动尖峰重置计数；连续无尖峰超过 leave_gap 才离开
+            if active:
+                self.gap = 0
             else:
-                self._leave_streak += 1
-                self._enter_streak = 0
-                if self._leave_streak >= self.debounce_leave:
-                    self._motion_presence = 0
-        return self._motion_presence
+                self.gap += 1
+                if self.gap >= self.leave_gap:
+                    self.presence = False
+                    self.gap = 0
+                    self.enter_cnt = 0
 
-    def _is_candidate(self, frame: Frame) -> bool:
-        """运动检测：超底噪能量之和大于 energy_threshold → 该帧为有人候选。"""
-        excess = sum(max(0.0, e - self.noise_floor) for e in frame.range_energy)
-        return excess > self.energy_threshold
-
-    # ---------- 静坐路径（A3b） ----------
-
-    def _still_step(self, frame: Frame) -> bool:
-        """静坐判定：窗口内整体方差小（稳定）且某门持续占用达到 still_persist 帧。"""
-        self._window.append(frame.range_energy)
-
-        # 更新每个距离门的连续占用计数
-        for gate, energy in enumerate(frame.range_energy):
-            if energy > self.still_gate_min:
-                self._gate_streaks[gate] = self._gate_streaks.get(gate, 0) + 1
+        # 动作分级（有人时）：看动作区能量。
+        # 静坐呼吸时动作区贴近底噪（即使距离门有呼吸尖峰），判"不动"；
+        # 手指 / 轻微转头动作区中等，判"小动"；挥手 / 起身动作区高，判"大动"。
+        # 走动保持：来回走动转身进入盲区时当下动作门低，但记忆窗口内
+        # 强动作帧数足够（走动成簇、静坐孤立），仍判"大动"。
+        if not self.presence:
+            level = 0
+        else:
+            strong_count = sum(1 for v in self.walk_motion_q if v >= self.walk_strong_threshold)
+            if short_motion >= self.large_threshold or strong_count >= self.walk_strong_frames:
+                level = 2
+            elif short_motion >= self.small_threshold:
+                level = 1
             else:
-                self._gate_streaks[gate] = 0
+                level = 0
 
-        # 窗口未满不判定，避免开头几帧误触发
-        if len(self._window) < self._window.maxlen:
-            self._still_present = False
-            return False
-
-        # 整体方差：把窗口内所有门能量摊平后算方差，小于阈值视为“能量稳定”
-        flat = [e for row in self._window for e in row]
-        stable = pvariance(flat) < self.still_energy_variance
-
-        # 占用：有某个门连续占用达到 still_persist 帧
-        occupied = any(streak >= self.still_persist for streak in self._gate_streaks.values())
-
-        self._still_present = stable and occupied
-        return self._still_present
-
-    # ---------- 人数 ----------
-
-    def _count_people(self, frame: Frame):
-        """优先取目标信息个数，夹在 0/1/2；拿不到（targets=None）返回 None，不硬猜。"""
-        # TODO(真实接入): targets=None 表示目标信息缺失，后续可结合能量估计，暂不猜
-        if frame.targets is None:
-            return None
-        return max(0, min(2, len(frame.targets)))
+        return Detection(
+            presence=self.presence,
+            motion_level=level,
+            motion_label=MOTION_LABELS[level],
+            range_energy=rng,
+            short_range_energy=short_range,
+            short_motion_energy=short_motion,
+            far_gate_ratio=far_ratio,
+            frames_since_active=self.gap,
+        )

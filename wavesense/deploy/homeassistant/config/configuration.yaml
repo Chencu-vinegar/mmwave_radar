@@ -1,0 +1,94 @@
+# Home Assistant 配置（WaveSense MVP）
+# 放置位置：本文件映射到容器 /config/configuration.yaml
+# 首次启动：浏览器打开 http://localhost:8123 建账号
+
+# MQTT broker（同一 compose 网络内用服务名 mosquitto）
+mqtt:
+  broker: mosquitto
+  port: 1883
+
+# 房间有人（接 Python 发布的 wavesense/room1/presence）
+binary_sensor:
+  - platform: mqtt
+    name: "房间有人"
+    object_id: room_presence          # 实体固定为 binary_sensor.room_presence
+    unique_id: wavesense_room_presence
+    state_topic: "wavesense/room1/presence"
+    payload_on: "1"
+    payload_off: "0"
+    device_class: occupancy
+    qos: 1
+
+# 人数（当前等于 presence：0/1；双人计数为后续）
+sensor:
+  - platform: mqtt
+    name: "人数"
+    object_id: people_count          # 实体固定为 sensor.people_count
+    unique_id: wavesense_people_count
+    state_topic: "wavesense/room1/people_count"
+
+# 延时关灯计时器；时长对应 config.yaml 的 light_off_delay_sec
+timer:
+  light_off:
+    name: "延时关灯"
+    duration: "00:05:00"
+
+# 灯占位：现场在 HA 接入智能灯后替换为真实实体名（如 light.desk_lamp）
+light:
+  - platform: template
+    lights:
+      placeholder_light:
+        friendly_name: "占位灯（替换为真实灯）"
+        turn_on:
+          service: logbook.log
+          data:
+            name: WaveSense
+            message: "占位灯：开"
+        turn_off:
+          service: logbook.log
+          data:
+            name: WaveSense
+            message: "占位灯：关"
+
+automation:
+  # 有人 → 立即开灯，并取消尚未到点的关灯
+  - alias: "有人_开灯并取消关灯"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.room_presence
+        to: "on"
+    action:
+      - service: timer.cancel
+        target:
+          entity_id: timer.light_off
+      - service: light.turn_on
+        target:
+          entity_id: light.placeholder_light
+
+  # 无人 → 启动延时关灯
+  - alias: "无人_启动延时关灯"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.room_presence
+        to: "off"
+    action:
+      - service: timer.start
+        target:
+          entity_id: timer.light_off
+
+  # 延时到 → 关灯
+  - alias: "延时到_关灯"
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.light_off
+    action:
+      - service: light.turn_off
+        target:
+          entity_id: light.placeholder_light
+
+# 记录历史与日志（默认 SQLite 存储，用于 Logbook 与 24h 进出记录）
+recorder:
+  db_url: sqlite:///config/home-assistant_v2.db
+logbook:

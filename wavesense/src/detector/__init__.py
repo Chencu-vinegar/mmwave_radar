@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-"""detector 包：存在判定核心（纯逻辑，不碰串口/网络）。"""
+"""判定器包：存在检测 + 动作分级。"""
+from .detector import Detection, Detector, MOTION_LABELS
 
-from src.detector.detector import Detector
-
-__all__ = ["Detector"]
+__all__ = ["Detection", "Detector", "MOTION_LABELS"]

@@ -1,20 +1,16 @@
-# -*- coding: utf-8 -*-
-"""base.py —— 数据源抽象基类。
+"""数据源抽象基类。
 
-所有数据源（模拟 / 文件回放 / 实时串口）都实现同一个接口 iter_frames()，
-这样后面的 Detector 和 main 不用关心帧从哪里来。
+所有数据源（文件回放 / 实时串口 / 模拟）都产出统一的 Frame，
+判定器只依赖这个接口，不关心数据来自哪里。
 """
-
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
-
-from src.data_source.frame import Frame
 
 
 class DataSource(ABC):
-    """数据源抽象基类：逐帧产出 Frame。"""
-
     @abstractmethod
-    def iter_frames(self) -> Iterator[Frame]:
-        """生成器：逐帧 yield Frame。具体数据源自己实现。"""
+    def frames(self):
+        """生成 Frame 的可迭代对象。"""
         raise NotImplementedError
+
+    def __iter__(self):
+        yield from self.frames()
