@@ -18,6 +18,7 @@ serial_live.py — DEV202H (ICL1122) 毫米波雷达 USB 串口实时读取与�
 后台线程持续读取串口字节，做帧同步、增量配对（RX0/RX1），
 并维护一个滚动 chirp 缓冲供 GUI 定时取用。
 """
+import itertools
 import struct
 import time
 import threading
@@ -211,6 +212,11 @@ class SerialRadarReader:
                 self._last_frame = fr
                 self.stats["frames"] += 1
 
-    def snapshot(self):
+    def snapshot(self, n=None):
+        """返回滚动缓冲快照；n 不为 None 时只取最近 n 个 chirp，降低复制与后续处理开销。"""
         with self.lock:
-            return list(self.recent), dict(self.stats)
+            if n is None or n >= len(self.recent):
+                items = list(self.recent)
+            else:
+                items = list(itertools.islice(self.recent, len(self.recent) - n, None))
+            return items, dict(self.stats)

@@ -1,0 +1,74 @@
+# ============================================================================
+# Home Assistant configuration.yaml 片段（A5）
+# 粘到：HA 配置目录 /config/configuration.yaml —— 是“合并进现有文件”，不要整体覆盖！
+# 带 ← 占位 的地方换成真实值；实体 ID 以 HA「设置 → 设备与服务 → 实体」里查到的为准。
+# ============================================================================
+
+# ---------- 1. MQTT broker 接入 ----------
+# 同一 compose 网络内用服务名 mosquitto；若 HA 单独部署，填笔记本局域网 IP，如 192.168.1.20
+mqtt:
+  broker: mosquitto
+  port: 1883
+  # username: ""        # 本地匿名先不开；以后加密码再填
+  # password: ""
+
+  # ---------- 2. MQTT 实体：存在 + 人数 ----------
+  binary_sensor:
+    - name: "人体存在"
+      state_topic: "wavesense/room1/presence"
+      value_template: "{{ value_json.presence }}"
+      device_class: presence        # 前端显示为“在家/不在家”类图标
+      # ← 占位：粘贴后到实体列表查自动生成的 entity_id（类似 binary_sensor.renti_cunzai），
+      #   下面自动化里的 entity_id 要换成它。
+
+  sensor:
+    - name: "人数"
+      state_topic: "wavesense/room1/people_count"
+      value_template: "{{ value_json.people_count }}"
+      unit_of_measurement: "人"
+      device_class: count
+
+# ---------- 3. 自动化 ----------
+automation:
+  # 自动化 A：presence off→on 立即开灯
+  - id: wavesense_light_on
+    alias: "有人立即开灯"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.renti_cunzai   # ← 占位：换成上面 binary_sensor 的真实 entity_id
+        from: "off"
+        to: "on"
+    action:
+      - service: light.turn_on
+        target:
+          entity_id: light.placeholder_light    # ← 占位：换成真实智能灯实体，如 light.bedroom_light
+
+  # 自动化 B：presence on→off 后延时 300s 关灯；延时到先复查仍是 off 才关，避免人刚回来被误关
+  - id: wavesense_light_off_delay
+    alias: "无人延时关灯"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.renti_cunzai   # ← 占位：同上，换真实 entity_id
+        from: "on"
+        to: "off"
+    action:
+      - delay:
+          seconds: 300        # ← 对应 config.yaml 的 light_off_delay_sec（默认 300），按需要改
+      - condition: state     # 延时结束复查：仍是无人才关灯
+        entity_id: binary_sensor.renti_cunzai
+        state: "off"
+      - service: light.turn_off
+        target:
+          entity_id: light.placeholder_light    # ← 占位：真实灯实体
+
+# ---------- 4. Recorder(SQLite) + Logbook ----------
+# Recorder 默认就启用 SQLite，这里显式写出保留天数；数据库在 /config/home-assistant_v2.db
+recorder:
+  purge_keep_days: 7         # 历史保留 7 天，按需调整
+
+logbook:
+  # 只关注存在传感器和灯，日志更干净；不写 include 则记录全部
+  include:
+    entities:
+      - binary_sensor.renti_cunzai   # ← 占位：换真实 entity_id
+      - light.placeholder_light      # ← 占位：换真实灯实体

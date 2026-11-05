@@ -1,0 +1,25 @@
+# WaveSense 本地部署：Mosquitto + Home Assistant（全局域网，不暴露公网）
+# 用法：在本目录执行 `docker compose up -d`
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: wavesense-mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: wavesense-ha
+    # Mac / Windows 用端口映射；Linux 上可改为 network_mode: host 以便设备发现
+    ports:
+      - "8123:8123"
+    volumes:
+      - ./homeassistant/config:/config
+    restart: unless-stopped
+    depends_on:
+      - mosquitto

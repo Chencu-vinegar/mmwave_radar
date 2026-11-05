@@ -27,6 +27,7 @@ import serial_live as sl
 MAX_RANGE = 5.0
 HEAT_FRAMES = 6      # BEV / 距离-角度热图只累积最近这几帧
 RT_WINDOW = 50       # 距离-时间图窗口帧数
+LIVE_REFRESH_MS = 33  # 实时刷新目标间隔（约 30 FPS，配合 blit 增量重绘）
 BAUD_CHOICES = ["921600", "115200", "460800", "256000", "128000", "1000000", "230400"]
 
 
@@ -91,6 +92,12 @@ class RadarApp:
         self.live_reader = None
         self.live_connected = False
         self.live_t0 = time.time()
+        # 实时显示优化状态：blit 背景缓存 / 热图 clim EMA / 瞬时帧率 EMA
+        self._live_bg = None
+        self._clim_ema = {}
+        self._fps_ema = 0.0
+        self._last_frames = 0
+        self._last_fps_t = 0.0
 
         # ---- 3D 点云状态 ----
         self.threed_frame = tk.IntVar(value=-1)
@@ -358,6 +365,9 @@ class RadarApp:
         self.live_canvas = FigureCanvasTkAgg(self.live_fig, master=self.live_tab)
         self.live_canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=4)
         NavigationToolbar2Tk(self.live_canvas, self.live_tab).update()
+        # 尺寸变化或任何全量重绘（含工具栏缩放/平移）后，blit 背景需重新捕获
+        self.live_canvas.mpl_connect("resize_event", self._on_live_resize)
+        self.live_canvas.mpl_connect("draw_event", self._on_live_draw_event)
 
         bottom = ttk.Frame(self.live_tab)
         bottom.pack(fill="x", padx=10, pady=(4, 8))
@@ -470,30 +480,86 @@ class RadarApp:
         self.record_btn.config(text="录制")
         self.live_status.set("已断开")
 
+    def _on_live_resize(self, event):
+        self._live_bg = None
+
+    def _on_live_draw_event(self, event):
+        # 任何全量重绘（工具栏缩放/平移等）后，blit 背景失效，下次重新捕获
+        self._live_bg = None
+
+    def _smooth_clim(self, tag, c, alpha=0.5):
+        """对热图 clim 做 EMA 平滑，避免逐帧颜色剧烈抖动（提高显示稳定性）。"""
+        prev = self._clim_ema.get(tag)
+        if c is None:
+            return prev
+        if prev is None:
+            self._clim_ema[tag] = c
+            return c
+        new = (prev[0] * (1 - alpha) + c[0] * alpha, prev[1] * (1 - alpha) + c[1] * alpha)
+        self._clim_ema[tag] = new
+        return new
+
+    def _live_draw(self):
+        """增量重绘实时图：优先 blit（只重绘 4 个动态 artist），失败回退全量 draw_idle。"""
+        canvas = self.live_canvas
+        if self._live_bg is None:
+            canvas.draw()
+            self._live_bg = canvas.copy_from_bbox(self.live_fig.bbox)
+            return
+        try:
+            canvas.restore_region(self._live_bg)
+            fig = self.live_fig
+            fig.draw_artist(self._bev_img)
+            fig.draw_artist(self._bev_origin)
+            fig.draw_artist(self._ra_img)
+            fig.draw_artist(self._rt_img)
+            fig.draw_artist(self._fr_scatter)
+            fig.draw_artist(self._fr_origin)
+            canvas.blit(self.live_fig.bbox)
+        except Exception:
+            self._live_bg = None
+            canvas.draw_idle()
+
     def _live_loop(self):
         if self.live_connected and self.live_reader is not None:
+            t0 = time.time()
             self._update_live_plots()
+            # 自适应间隔：目标 LIVE_REFRESH_MS，扣除本轮渲染耗时，避免事件堆积
+            cost = time.time() - t0
+            delay = max(5, int(LIVE_REFRESH_MS - cost * 1000))
             # 3D 标签页节流刷新（约 1 秒一次，仅当用户正停留在 3D 页时）
             now = time.time()
             if now - self._last_3d_update > 1.0 and self.notebook.index("current") == 2:
                 self._update_3d()
                 self._last_3d_update = now
-        self.root.after(100, self._live_loop)
+        else:
+            delay = 200  # 未连接时低频轮询，降低空闲 CPU 占用
+        self.root.after(delay, self._live_loop)
 
     def _update_live_plots(self):
-        chirps, stats = self.live_reader.snapshot()
-        elapsed = time.time() - self.live_t0
-        fps = stats["frames"] / elapsed if elapsed > 0 else 0.0
+        cfg = self.live_reader.config
+        cpf = cfg.chirps_per_frame
+        # 只取最近 RT_WINDOW 帧多一点（BEV/RA/RT/最新帧都够用），避免复制整个滚动缓冲
+        chirps, stats = self.live_reader.snapshot(n=RT_WINDOW * cpf + cpf)
+        now = time.time()
+
+        # 瞬时帧率（EMA 平滑，反映实时刷新，而非长时间累计平均）
+        dframes = stats["frames"] - self._last_frames
+        dt = now - self._last_fps_t
+        if self._last_fps_t > 0 and dt > 0:
+            inst = dframes / dt
+            self._fps_ema = inst if self._fps_ema == 0 else 0.7 * self._fps_ema + 0.3 * inst
+        self._last_frames = stats["frames"]
+        self._last_fps_t = now
+
         if not chirps:
             self.live_status.set(
                 f"已连接，等待数据... | {stats['chirps']} chirp · {stats['frames']} 帧 · "
                 f"{stats['bytes']} B · 错误 {stats['errors']}")
             return
-        cfg = self.live_reader.config
         scale = self.scale.get()
         mirror = -1.0 if self.mirror.get() else 1.0
 
-        cpf = cfg.chirps_per_frame
         gmax = chirps[-1][0] // cpf
 
         # BEV / 距离-角度：只取最近 HEAT_FRAMES 帧（场景快照，避免对全部滚动缓冲做直方图）
@@ -507,7 +573,7 @@ class RadarApp:
         H, _, _ = np.histogram2d(x, y, bins=[120, 60],
                                  range=[[-MAX_RANGE, MAX_RANGE], [0, MAX_RANGE]], weights=amps)
         self._bev_img.set_data(np.ma.masked_where(H <= 0, H).T)
-        c = _log_clim(H)
+        c = self._smooth_clim("bev", _log_clim(H))
         if c:
             self._bev_img.set_clim(*c)
 
@@ -515,7 +581,7 @@ class RadarApp:
         H, _, _ = np.histogram2d(angles, rng, bins=[180, 50],
                                  range=[[-90, 90], [0, MAX_RANGE]], weights=amps)
         self._ra_img.set_data(np.ma.masked_where(H <= 0, H).T)
-        c = _log_clim(H)
+        c = self._smooth_clim("ra", _log_clim(H))
         if c:
             self._ra_img.set_clim(*c)
 
@@ -531,7 +597,7 @@ class RadarApp:
         valid = (rel >= 0) & (rel < nw)
         np.add.at(rt, rel[valid], amp[valid])
         self._rt_img.set_data(np.ma.masked_where(rt <= 0, rt).T)
-        c = _log_clim(rt)
+        c = self._smooth_clim("rt", _log_clim(rt))
         if c:
             self._rt_img.set_clim(*c)
         if not getattr(self, "_rt_ticks_init", False):
@@ -540,7 +606,6 @@ class RadarApp:
             self._rt_ticks_init = True
 
         # 最新单帧散点（复用 scatter artist）
-        self.lax_fr.set_title(f"Latest Frame BEV (frame {gmax})")
         mask = frames == gmax
         if np.any(mask):
             rr = ranges[mask] * scale
@@ -554,11 +619,11 @@ class RadarApp:
             self._fr_scatter.set_offsets(np.zeros((0, 2)))
             self._fr_scatter.set_array(np.array([]))
 
-        self.live_canvas.draw_idle()
+        self._live_draw()
 
         self.live_status.set(
-            f"实时 | {stats['chirps']} chirp · {stats['frames']} 帧 · "
-            f"{fps:.1f} 帧/s · {stats['bytes']/1024:.0f} KB · 错误 {stats['errors']}")
+            f"实时 | {self._fps_ema:.1f} 帧/s · 最新帧 {gmax} · {stats['chirps']} chirp · "
+            f"{stats['bytes']/1024:.0f} KB · 错误 {stats['errors']}")
 
     def export_live_csv(self):
         if self.live_reader is None:
