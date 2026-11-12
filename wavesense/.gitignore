@@ -1,0 +1,10 @@
+# Python / 运行产物
+__pycache__/
+*.pyc
+*.pyo
+
+# 标定脚本输出（每次运行重新生成，不入库）
+tools/calibration_report.txt
+
+# 网页运行时数据（事件记录、上传文件）
+web_data/
