@@ -8,3 +8,6 @@ tools/calibration_report.txt
 
 # 网页运行时数据（事件记录、上传文件）
 web_data/
+
+# 新采集的原始 .dat 录制（体积大，按 labels 备注在本地留存；.gz 标定样本入库）
+samples/*.dat

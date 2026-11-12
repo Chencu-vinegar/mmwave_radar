@@ -46,6 +46,7 @@
 
     "RadarData_2026_11_12_empty_ac_on.dat": {"scene": "empty", "note": "空调开空房；0-180s 关门扰动，210-510s 稳态负样本"},
     "RadarData_2026_11_12_sit_2m.dat":       {"scene": "rest",  "note": "2m 静坐；动作门异常偏高（存疑）"},
-    "RadarData_2026_11_12_sit_2m_b.dat":     {"scene": "rest",  "note": "2m 静坐 正常"}
+    "RadarData_2026_11_12_sit_2m_b.dat":     {"scene": "rest",  "note": "2m 静坐 正常"},
+    "RadarData_2026_11_12_type_motion.dat":  {"scene": "small", "note": "2m 打字微动；动作区中位 3.4e7 与静坐底噪重叠，弱微动漏判"}
   }
 }
