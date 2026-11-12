@@ -33,6 +33,13 @@ detector:
   walk_strong_threshold: 2.0e9  # 强动作门阈值
   walk_strong_frames: 20        # 窗口内强动作帧数达到即判大动
 
+  # 基线自适应：开机/学习期采集空房底噪 p95，活动判据在绝对阈值之上
+  # 叠加"相对基线抬升"条件。基线未学习完成时相对条件不约束（旧行为）。
+  baseline:
+    learn_frames: 0           # 开机自动学习基线帧数；0=不自动学习，可在网页点"学习基线"
+    ratio: 1.8                # 短窗距离门需超过基线 p95 的倍数才算抬升
+    long_window: 300          # 长窗距离门中位数窗口（帧），辅助判断远距离静坐弱抬升
+
 # MQTT 本地 broker（与 HA 同机或局域网）
 mqtt:
   host: localhost

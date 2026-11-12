@@ -1,0 +1,51 @@
+{
+  "_comment": "samples 原始录制段的场景标注。scene: empty=空房负样本, rest=静坐, small=小动, large=大动, walk=走动。note 记录录制条件/存疑点。",
+  "samples": {
+    "direct_serial_empty.gz":            {"scene": "empty", "note": "直接串口空房"},
+    "direct_serial_sit_1711.gz":         {"scene": "rest", "note": "直接串口静坐"},
+    "direct_serial_sit_1732.gz":         {"scene": "rest", "note": "直接串口静坐"},
+    "direct_serial_sit_phone.gz":        {"scene": "rest", "note": "静坐看手机"},
+
+    "RadarData_2026_10_20_10_16_59.gz": {"scene": "rest",  "note": "50cm 不动"},
+    "RadarData_2026_10_20_10_17_19.gz": {"scene": "small", "note": "50cm 小动"},
+    "RadarData_2026_10_20_10_17_34.gz": {"scene": "large", "note": "50cm 大动"},
+    "RadarData_2026_10_20_10_30_12.gz": {"scene": "rest",  "note": "1m 不动"},
+    "RadarData_2026_10_20_10_30_23.gz": {"scene": "small", "note": "1m 小动"},
+    "RadarData_2026_10_20_10_30_37.gz": {"scene": "large", "note": "1m 大动"},
+    "RadarData_2026_10_20_10_50_18.gz": {"scene": "rest",  "note": "50cm 强化不动"},
+    "RadarData_2026_10_20_10_50_28.gz": {"scene": "small", "note": "50cm 强化小动"},
+    "RadarData_2026_10_20_10_50_41.gz": {"scene": "large", "note": "50cm 强化大动"},
+    "RadarData_2026_10_20_10_51_18.gz": {"scene": "rest",  "note": "1m 强化不动"},
+    "RadarData_2026_10_20_10_51_25.gz": {"scene": "small", "note": "1m 强化小动"},
+    "RadarData_2026_10_20_10_51_38.gz": {"scene": "large", "note": "1m 强化大动"},
+    "RadarData_2026_10_20_10_56_14.gz": {"scene": "rest",  "note": "房间内动作后静坐"},
+    "RadarData_2026_10_20_11_06_19.gz": {"scene": "rest",  "note": "电脑旁静坐"},
+    "RadarData_2026_10_20_11_07_21.gz": {"scene": "rest",  "note": "房间内动作后静坐2"},
+    "RadarData_2026_10_20_11_21_31.gz": {"scene": "empty", "note": "离开又回来（中段空房）"},
+    "RadarData_2026_10_20_11_22_41.gz": {"scene": "empty", "note": "离开又回来2（中段空房）"},
+
+    "RadarData_2026_10_29_17_19_21.gz": {"scene": "walk", "note": "走动保持"},
+    "RadarData_2026_10_29_17_20_40.gz": {"scene": "walk", "note": "走动保持"},
+    "RadarData_2026_10_29_17_51_42.gz": {"scene": "walk", "note": "走动保持"},
+    "RadarData_2026_10_29_18_17_16.gz": {"scene": "walk", "note": "走动保持"},
+    "RadarData_2026_10_29_18_29_28.gz": {"scene": "walk", "note": "走动保持"},
+    "RadarData_2026_10_29_18_30_59.gz": {"scene": "walk", "note": "走动保持"},
+    "RadarData_2026_10_29_18_32_05.gz": {"scene": "walk", "note": "走动保持"},
+    "RadarData_2026_10_29_18_34_01.gz": {"scene": "walk", "note": "走动保持"},
+
+    "RadarData_2026_11_05_17_46_34.gz": {"scene": "empty", "note": "空房 空调开"},
+    "RadarData_2026_11_05_17_49_06.gz": {"scene": "empty", "note": "空房 空调开"},
+    "RadarData_2026_11_05_17_51_30.gz": {"scene": "rest",  "note": "静坐 空调开?"},
+    "RadarData_2026_11_05_17_52_51.gz": {"scene": "rest",  "note": "静坐 空调开?"},
+    "RadarData_2026_11_05_17_54_28.gz": {"scene": "walk",  "note": "走动1"},
+    "RadarData_2026_11_05_17_55_36.gz": {"scene": "walk",  "note": "走动2"},
+    "RadarData_2026_11_05_18_29_27.gz": {"scene": "empty", "note": "空房 空调关"},
+    "RadarData_2026_11_05_18_37_47.gz": {"scene": "rest",  "note": "静坐 0.5m 空调关"},
+    "RadarData_2026_11_05_18_38_31.gz": {"scene": "rest",  "note": "静坐 1m 空调关"},
+    "RadarData_2026_11_05_18_39_37.gz": {"scene": "rest",  "note": "静坐 1.5m 空调关"},
+
+    "RadarData_2026_11_12_empty_ac_on.dat": {"scene": "empty", "note": "空调开空房；0-180s 关门扰动，210-510s 稳态负样本"},
+    "RadarData_2026_11_12_sit_2m.dat":       {"scene": "rest",  "note": "2m 静坐；动作门异常偏高（存疑）"},
+    "RadarData_2026_11_12_sit_2m_b.dat":     {"scene": "rest",  "note": "2m 静坐 正常"}
+  }
+}

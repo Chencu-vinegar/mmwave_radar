@@ -20,9 +20,11 @@ FPS = 480                  # 逻辑帧率，用于把帧数换算成时长
 
 
 class MonitorEngine:
-    def __init__(self, source, cfg, history_path, pace=False, mode="live", source_name=""):
+    def __init__(self, source, cfg, history_path, pace=False, mode="live",
+                 source_name="", baseline_path=None):
         self.cfg = cfg
         self.history_path = history_path
+        self.baseline_path = baseline_path
         self.frame_interval = 1.0 / FPS
 
         self._lock = threading.Lock()
@@ -35,6 +37,14 @@ class MonitorEngine:
         self.source_name = source_name
 
         self.detector = Detector(cfg)
+        # 载入已保存的空房基线（若有）
+        if baseline_path and os.path.exists(baseline_path):
+            try:
+                with open(baseline_path, "r", encoding="utf-8") as f:
+                    self.detector.load_baseline(json.load(f))
+            except (ValueError, OSError):
+                pass
+        self._baseline_saved = self.detector.baseline_range is not None
         self.latest = None
         self.series = deque(maxlen=SERIES_LEN)
         self.events = self._load_history()
@@ -96,6 +106,12 @@ class MonitorEngine:
             self.mode = mode
             self.source_name = source_name
             self.detector = Detector(self.cfg)
+            if self.baseline_path and os.path.exists(self.baseline_path):
+                try:
+                    with open(self.baseline_path, "r", encoding="utf-8") as f:
+                        self.detector.load_baseline(json.load(f))
+                except (ValueError, OSError):
+                    pass
             self.latest = None
             self.series = deque(maxlen=SERIES_LEN)
             self.frame_count = 0
@@ -133,6 +149,9 @@ class MonitorEngine:
                     "level": d.motion_level,
                 })
                 self.frame_count += 1
+                if d.as_dict().get("baseline_ready") and not self._baseline_saved:
+                    self._baseline_saved = True
+                    self._save_baseline()
                 if d.presence:
                     self._n_present += 1
                     self._levels[d.motion_level] += 1
@@ -224,3 +243,20 @@ class MonitorEngine:
             self.events = []
         self._save_history()
         return True
+
+    # ---------- 空房基线 ----------
+    def learn_baseline(self):
+        """触发重新学习空房基线（调用前请确保房间无人）。"""
+        self.detector.start_baseline_learn()
+        return True
+
+    def _save_baseline(self):
+        if not self.baseline_path:
+            return
+        tmp = self.baseline_path + ".tmp"
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(self.detector.baseline_dict(), f, ensure_ascii=False)
+            os.replace(tmp, self.baseline_path)
+        except OSError:
+            pass
