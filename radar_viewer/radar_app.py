@@ -530,7 +530,11 @@ class RadarApp:
         # 状态检测：喂入新 chirp（内部按 64 chirp 组帧，去重），更新「无人/静坐/走动」
         self.detector.feed(chirps)
         det = self.detector.last
-        if det is not None:
+        if self.detector.warmup_left > 0:
+            sec = self.detector.warmup_remaining_seconds
+            self.detect_status.set(f"状态：预热中（约 {sec:.0f} 秒后开始判定）")
+            self.detect_label.config(fg="#888888")
+        elif det is not None:
             self.detect_status.set(
                 f"状态：{det.state_label}  |  动作：{det.motion_label}  |  "
                 f"距离门 {det.short_range_energy:.2e} · 动作门 {det.short_motion_energy:.2e}")

@@ -286,6 +286,11 @@ class DetectorConfig:
     def __init__(self, fps=36.0):
         k = FPS_REF / fps  # 480 / 36 ≈ 13.33
         self.fps = float(fps)
+        # 雷达上电预热：约 40s 内基带/AGC 未稳定，距离/动作门能量从 ~1e10 指数
+        # 衰减到 ~1e6（实测 empty 数据前 ~1400 帧即此过程）。期间判定不可靠，
+        # LiveDetector 会直接丢弃这些帧，不喂给 Detector。
+        self.warmup_seconds = 40.0
+        self.warmup_frames = max(0, int(round(self.warmup_seconds * fps)))
         # 时间类参数：按帧率比例缩放
         self.short_window = max(2, int(round(30 / k)))          # 平滑短窗（~62ms）
         self.long_window = max(10, int(round(300 / k)))         # 长窗（~625ms）
@@ -322,6 +327,7 @@ class LiveDetector:
         self._frame = {}
         self.last = None
         self.n_frames_processed = 0
+        self.warmup_left = self.cfg.warmup_frames
 
     def reset(self):
         self.detector.reset()
@@ -330,6 +336,13 @@ class LiveDetector:
         self._frame.clear()
         self.last = None
         self.n_frames_processed = 0
+        self.warmup_left = self.cfg.warmup_frames
+
+    @property
+    def warmup_remaining_seconds(self):
+        """剩余预热秒数（未预热完成时 >0）。"""
+        fps = self.cfg.fps if self.cfg.fps else 1.0
+        return self.warmup_left / fps
 
     def feed(self, chirps):
         """chirps: [(gch, r0, r1), ...] 按时间递增的 chirp 列表。
@@ -359,8 +372,13 @@ class LiveDetector:
             r1 = np.stack([self._frame[i][1] for i in idxs])
             range_e, motion_e, gates6, dc_e = extract_features(
                 r0, r1, self.n_bin, self.cpf, motion_lo_bin=self.motion_lo_bin)
-            self.last = self.detector.update(
-                DetectorFrame(gates6, range_e, motion_e))
-            self.n_frames_processed += 1
+            if self.warmup_left > 0:
+                # 预热期：丢弃该帧，不喂给 Detector，避免污染平滑窗口与基线
+                self.warmup_left -= 1
+                self.last = None
+            else:
+                self.last = self.detector.update(
+                    DetectorFrame(gates6, range_e, motion_e))
+                self.n_frames_processed += 1
         self._frame.clear()
         return self.last

@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
-"""calibrate.py — 分析录制的 55 AA 裸帧 .dat，标定 presence_detect 能量阈值。
+"""calibrate.py — 分析录制的雷达数据，标定 presence_detect 能量阈值。
 
 用法:
-  python calibrate.py empty.dat sit.dat walk.dat
+  python calibrate.py empty.dat sit.dat walk.dat [--warmup-frames N]
 
 每组数据（空房 / 静坐 / 走动）：
-  1. 解析 55 AA 裸帧，配对 RX0/RX1，按 64 chirp 组帧；
+  1. 解析数据（自动识别 ICLH 封装或 55 AA 裸帧），配对 RX0/RX1，按 64 chirp 组帧；
   2. 每帧做软件 2DFFT，提取 range_energy（距离门）与 motion_energy（动作门）；
   3. 统计分布（min / med / p95 / max），并给出建议阈值。
 
-说明：录制的 .dat 是串口原始字节（55 AA 裸帧，非 ICLH 封装），与实时链路一致。
+说明：
+  - ICLH 封装（SDK 工具保存的 .dat）与 55 AA 裸帧（串口录制）同为 1dfft 8 距离门
+    复数，内容一致，本工具按文件头自动区分。
+  - 雷达上电后约 40 秒内处于预热期（距离/动作门能量从 ~1e10 指数衰减到 ~1e6），
+    若录制时未等待预热完成，可用 --warmup-frames N 跳过开头的 N 帧再统计。
 """
 import os
 import struct
@@ -19,6 +23,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import presence_detect as pd
+import radar_parser as rp
 import serial_live as sl
 
 FRAME_HDR = b"\x55\xAA"
@@ -57,10 +62,17 @@ def parse_55aa(raw, n_bin=8):
     return chirps
 
 
-def analyze(path, cpf=64, n_bin=8, motion_lo_bin=3):
+def analyze(path, cpf=64, n_bin=8, motion_lo_bin=3, warmup_frames=0):
     with open(path, "rb") as f:
-        raw = f.read()
-    chirps = parse_55aa(raw, n_bin)
+        head = f.read(4)
+    if head == b"ICLH":
+        # ICLH 封装（SDK 保存的 .dat）：与 55 AA 裸帧同为 1dfft 8 距离门复数
+        chirps, _ = rp.parse_dat(path, config=rp.RadarConfig())
+    else:
+        # 串口录制的 55 AA 裸帧
+        with open(path, "rb") as f:
+            raw = f.read()
+        chirps = parse_55aa(raw, n_bin)
     if not chirps:
         print(f"  {os.path.basename(path)}: no valid chirps")
         return None, None
@@ -80,6 +92,10 @@ def analyze(path, cpf=64, n_bin=8, motion_lo_bin=3):
         n_frames += 1
     ranges = np.array(ranges)
     motions = np.array(motions)
+    if warmup_frames > 0 and len(ranges) > warmup_frames:
+        ranges = ranges[warmup_frames:]
+        motions = motions[warmup_frames:]
+        print(f"  [warmup] 跳过前 {warmup_frames} 帧（预热期）")
     return ranges, motions
 
 
@@ -102,16 +118,27 @@ def _fmt(a):
 
 
 def main():
-    if len(sys.argv) < 4:
+    args = sys.argv[1:]
+    warmup_frames = 0
+    paths = []
+    i = 0
+    while i < len(args):
+        if args[i] == "--warmup-frames" and i + 1 < len(args):
+            warmup_frames = int(args[i + 1])
+            i += 2
+        else:
+            paths.append(args[i])
+            i += 1
+    if len(paths) < 3:
         print(__doc__)
         return
-    paths = sys.argv[1:4]
+    paths = paths[:3]
     labels = ["empty", "sit", "walk"]
     stats = {}
     for lab, p in zip(labels, paths):
         print("=" * 62)
         print(f"[{lab}] {p}")
-        rng, mot = analyze(p)
+        rng, mot = analyze(p, warmup_frames=warmup_frames)
         if rng is None:
             continue
         stats[lab] = (rng, mot)
