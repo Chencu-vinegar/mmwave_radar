@@ -48,6 +48,12 @@
     "RadarData_2026_11_12_sit_2m.dat":       {"scene": "rest",  "note": "2m 静坐；动作门异常偏高（存疑）"},
     "RadarData_2026_11_12_sit_2m_b.dat":     {"scene": "rest",  "note": "2m 静坐 正常"},
     "RadarData_2026_11_12_type_motion.dat":  {"scene": "small", "note": "2m 打字微动；动作区中位 3.4e7 与静坐底噪重叠，弱微动漏判"},
-    "RadarData_2026_11_17_walk_in_out.dat":  {"scene": "walk", "note": "走入走出过渡段 58.6s；0-7s 无人稳态(距离门3.3e9偏高)，8s 动作区抬升进入，11-42s 活动，43s 走出回落；判定开机即误判有人，走出后未触发离开(无人空档约14s<leave_gap约25s)"}
+    "RadarData_2026_11_17_walk_in_out.dat":  {"scene": "walk", "note": "走入走出过渡段 58.6s；0-7s 无人稳态(距离门3.3e9偏高)，8s 动作区抬升进入，11-42s 活动，43s 走出回落；判定开机即误判有人，走出后未触发离开(无人空档约14s<leave_gap约25s)"},
+    "RadarData_2026_11_17_1m_front.dat":      {"scene": "rest", "note": "角度补测 1m 正对0°；距离门中位3.82e9/动作区1.07e8/远门0.24，大动帧6933，有人100%"},
+    "RadarData_2026_11_17_1m_side.dat":      {"scene": "rest", "note": "角度补测 1m 侧对90°；距离门3.60e9/动作区7.35e7/远门0.19，大动帧4237，有人100%"},
+    "RadarData_2026_11_17_1m_back.dat":       {"scene": "rest", "note": "角度补测 1m 背对180°；距离门3.33e9/动作区5.06e7/远门0.13，大动帧1366，有人100%"},
+    "RadarData_2026_11_17_1p5m_front.dat":    {"scene": "rest", "note": "角度补测 1.5m 正对0°；距离门3.42e9/动作区9.09e7/远门0.15，大动帧9121，有人100%"},
+    "RadarData_2026_11_17_1p5m_side.dat":    {"scene": "rest", "note": "角度补测 1.5m 侧对90°；距离门3.58e9/动作区1.85e8/远门0.20，大动帧19809(动作偏多，存疑是否含抬手转身)"},
+    "RadarData_2026_11_17_1p5m_back.dat":     {"scene": "rest", "note": "角度补测 1.5m 背对180°；距离门3.20e9/动作区4.67e7贴空房底噪/远门0.12，全判不动，有人99.9%"}
   }
 }
