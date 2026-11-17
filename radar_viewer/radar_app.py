@@ -23,6 +23,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  3D 点云标签页
 
 import radar_parser as rp
 import serial_live as sl
+import presence_detect as pd
 
 MAX_RANGE = 5.0
 HEAT_FRAMES = 6      # BEV / 距离-角度热图只累积最近这几帧
@@ -92,6 +93,10 @@ class RadarApp:
         self.live_reader = None
         self.live_connected = False
         self.live_t0 = time.time()
+        # 状态检测（无人 / 静坐 / 走动）
+        self.detect_status = tk.StringVar(value="状态：待连接")
+        self.detector = pd.LiveDetector()
+        self._detect_color = {"无人": "#888888", "静坐": "#1a7f37", "走动": "#d9534f"}
         # 实时显示优化状态：热图 clim EMA / 瞬时帧率 EMA
         self._clim_ema = {}
         self._fps_ema = 0.0
@@ -367,6 +372,10 @@ class RadarApp:
 
         bottom = ttk.Frame(self.live_tab)
         bottom.pack(fill="x", padx=10, pady=(4, 8))
+        self.detect_label = tk.Label(bottom, textvariable=self.detect_status,
+                                     font=("Microsoft YaHei", 16, "bold"),
+                                     fg="#888888", anchor="w")
+        self.detect_label.pack(fill="x")
         ttk.Label(bottom, textvariable=self.live_status, relief="sunken", anchor="w").pack(
             fill="x", expand=True)
 
@@ -463,6 +472,10 @@ class RadarApp:
             messagebox.showerror("连接失败", f"无法打开串口 {port}：\n{e}")
             return
         self.live_connected = True
+        # 按配置文件的实际 chirp/帧 与 bin 数重建检测器，状态清零
+        self.detector = pd.LiveDetector(cpf=cfg.chirps_per_frame, n_bin=cfg.n_bin)
+        self.detect_status.set("状态：检测中...")
+        self.detect_label.config(fg="#888888")
         self.live_t0 = time.time()
         self.connect_btn.config(text="断开")
         self.live_status.set(f"已连接 {port} @ {baud} | {cfg.summary()}")
@@ -474,6 +487,9 @@ class RadarApp:
         self.live_connected = False
         self.connect_btn.config(text="连接")
         self.record_btn.config(text="录制")
+        self.detector.reset()
+        self.detect_status.set("状态：待连接")
+        self.detect_label.config(fg="#888888")
         self.live_status.set("已断开")
 
     def _smooth_clim(self, tag, c, alpha=0.5):
@@ -510,6 +526,15 @@ class RadarApp:
         # 只取最近 RT_WINDOW 帧多一点（BEV/RA/RT/最新帧都够用），避免复制整个滚动缓冲
         chirps, stats = self.live_reader.snapshot(n=RT_WINDOW * cpf + cpf)
         now = time.time()
+
+        # 状态检测：喂入新 chirp（内部按 64 chirp 组帧，去重），更新「无人/静坐/走动」
+        self.detector.feed(chirps)
+        det = self.detector.last
+        if det is not None:
+            self.detect_status.set(
+                f"状态：{det.state_label}  |  动作：{det.motion_label}  |  "
+                f"距离门 {det.short_range_energy:.2e} · 动作门 {det.short_motion_energy:.2e}")
+            self.detect_label.config(fg=self._detect_color.get(det.state_label, "#888888"))
 
         # 瞬时帧率（EMA 平滑，反映实时刷新，而非长时间累计平均）
         dframes = stats["frames"] - self._last_frames
