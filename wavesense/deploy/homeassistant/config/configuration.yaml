@@ -5,7 +5,7 @@
 # 灯：飞利浦 WiZ 全彩智能灯泡（WiFi，无网关）。
 # 接入步骤见 deploy/README.md「WiZ 灯泡接入」一节。
 # 接入后：在 设置 → 设备与服务 → WiZ 下查看灯泡实体名（形如 light.wiz_bulb_xxx），
-# 把本文件下方自动化里三处 light.placeholder_light 统一替换成该实体名，
+# 把本文件下方自动化里两处 light.placeholder_light 引用替换成该实体名，
 # 并可删除下面 light: 下的占位 template 段。
 
 # MQTT broker（同一 compose 网络内用服务名 mosquitto）
@@ -40,7 +40,7 @@ timer:
     duration: "00:05:00"
 
 # 灯占位：未接真实灯时用日志模拟开关，便于先验证自动化链路。
-# 接入 WiZ 灯泡后，把自动化里三处 light.placeholder_light 换成真实实体名，
+# 接入 WiZ 灯泡后，把自动化里两处 light.placeholder_light 引用换成真实实体名，
 # 然后可删除本段占位 template。
 light:
   - platform: template

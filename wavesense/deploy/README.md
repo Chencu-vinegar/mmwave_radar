@@ -73,8 +73,8 @@ PYTHONPATH=. python -m src.main --source simulated --mqtt
 
 ### 3. 回填配置并重启
 
-1. 打开 `homeassistant/config/configuration.yaml`，把自动化里三处
-   `light.placeholder_light` 统一替换成上面的真实实体名。
+1. 打开 `homeassistant/config/configuration.yaml`，把自动化里两处
+   `light.placeholder_light` 引用（开灯、关灯）替换成上面的真实实体名。
 2. 确认灯控行为：有人开灯并取消关灯计时、无人启动 5 分钟延时关灯、到点关灯。
 3. 不需要占位演示后，可删掉 `light:` 下的占位 template 段。
 4. 重启 HA 生效：
