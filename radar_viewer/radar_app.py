@@ -27,7 +27,7 @@ import serial_live as sl
 MAX_RANGE = 5.0
 HEAT_FRAMES = 6      # BEV / 距离-角度热图只累积最近这几帧
 RT_WINDOW = 50       # 距离-时间图窗口帧数
-LIVE_REFRESH_MS = 33  # 实时刷新目标间隔（约 30 FPS，配合 blit 增量重绘）
+LIVE_REFRESH_MS = 33  # 实时刷新目标间隔（约 30 FPS）
 BAUD_CHOICES = ["921600", "115200", "460800", "256000", "128000", "1000000", "230400"]
 
 
@@ -92,8 +92,7 @@ class RadarApp:
         self.live_reader = None
         self.live_connected = False
         self.live_t0 = time.time()
-        # 实时显示优化状态：blit 背景缓存 / 热图 clim EMA / 瞬时帧率 EMA
-        self._live_bg = None
+        # 实时显示优化状态：热图 clim EMA / 瞬时帧率 EMA
         self._clim_ema = {}
         self._fps_ema = 0.0
         self._last_frames = 0
@@ -365,9 +364,6 @@ class RadarApp:
         self.live_canvas = FigureCanvasTkAgg(self.live_fig, master=self.live_tab)
         self.live_canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=4)
         NavigationToolbar2Tk(self.live_canvas, self.live_tab).update()
-        # 尺寸变化或任何全量重绘（含工具栏缩放/平移）后，blit 背景需重新捕获
-        self.live_canvas.mpl_connect("resize_event", self._on_live_resize)
-        self.live_canvas.mpl_connect("draw_event", self._on_live_draw_event)
 
         bottom = ttk.Frame(self.live_tab)
         bottom.pack(fill="x", padx=10, pady=(4, 8))
@@ -480,13 +476,6 @@ class RadarApp:
         self.record_btn.config(text="录制")
         self.live_status.set("已断开")
 
-    def _on_live_resize(self, event):
-        self._live_bg = None
-
-    def _on_live_draw_event(self, event):
-        # 任何全量重绘（工具栏缩放/平移等）后，blit 背景失效，下次重新捕获
-        self._live_bg = None
-
     def _smooth_clim(self, tag, c, alpha=0.5):
         """对热图 clim 做 EMA 平滑，避免逐帧颜色剧烈抖动（提高显示稳定性）。"""
         prev = self._clim_ema.get(tag)
@@ -498,27 +487,6 @@ class RadarApp:
         new = (prev[0] * (1 - alpha) + c[0] * alpha, prev[1] * (1 - alpha) + c[1] * alpha)
         self._clim_ema[tag] = new
         return new
-
-    def _live_draw(self):
-        """增量重绘实时图：优先 blit（只重绘 4 个动态 artist），失败回退全量 draw_idle。"""
-        canvas = self.live_canvas
-        if self._live_bg is None:
-            canvas.draw()
-            self._live_bg = canvas.copy_from_bbox(self.live_fig.bbox)
-            return
-        try:
-            canvas.restore_region(self._live_bg)
-            fig = self.live_fig
-            fig.draw_artist(self._bev_img)
-            fig.draw_artist(self._bev_origin)
-            fig.draw_artist(self._ra_img)
-            fig.draw_artist(self._rt_img)
-            fig.draw_artist(self._fr_scatter)
-            fig.draw_artist(self._fr_origin)
-            canvas.blit(self.live_fig.bbox)
-        except Exception:
-            self._live_bg = None
-            canvas.draw_idle()
 
     def _live_loop(self):
         if self.live_connected and self.live_reader is not None:
@@ -619,7 +587,7 @@ class RadarApp:
             self._fr_scatter.set_offsets(np.zeros((0, 2)))
             self._fr_scatter.set_array(np.array([]))
 
-        self._live_draw()
+        self.live_canvas.draw_idle()
 
         self.live_status.set(
             f"实时 | {self._fps_ema:.1f} 帧/s · 最新帧 {gmax} · {stats['chirps']} chirp · "

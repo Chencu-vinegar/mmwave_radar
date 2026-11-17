@@ -2,6 +2,20 @@
 
 本文档记录本项目的版本更新。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [v0.3.1] - 2026-11-05
+
+修复 v0.3 引入的串口实时「黑屏」问题。
+
+### 修复
+
+- **移除 blit 增量重绘**：v0.3 的 blit 增量重绘在 TkAgg 后端下会导致实时热图黑屏（blit 失败时不抛异常，无法触发 `except` 回退）。本版移除 blit 逻辑，恢复为 `draw_idle()` 全量重绘，保证实时图正常显示
+- 保留 v0.3 的其余优化：artist 复用（`set_data` / `set_offsets`）、`snapshot(n)` 减负、热图 `clim` EMA 平滑、瞬时帧率显示、自适应刷新间隔（约 30 FPS 目标）
+
+### 验证
+
+- 模拟 55 AA 串口帧喂入 `SerialRadarReader`：384 chirp / 6 帧 / 0 错误，热图产出非零数据，确认数据解析路径正常
+- `py_compile` 通过；`radar_app` 可正常导入
+
 ## [v0.3] - 2026-11-05
 
 优化串口实时显示的帧率与准确性，便于后端连接后实时反应。
