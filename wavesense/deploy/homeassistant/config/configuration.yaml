@@ -1,6 +1,12 @@
 # Home Assistant 配置（WaveSense MVP）
 # 放置位置：本文件映射到容器 /config/configuration.yaml
 # 首次启动：浏览器打开 http://localhost:8123 建账号
+#
+# 灯：飞利浦 WiZ 全彩智能灯泡（WiFi，无网关）。
+# 接入步骤见 deploy/README.md「WiZ 灯泡接入」一节。
+# 接入后：在 设置 → 设备与服务 → WiZ 下查看灯泡实体名（形如 light.wiz_bulb_xxx），
+# 把本文件下方自动化里两处 light.placeholder_light 引用替换成该实体名，
+# 并可删除下面 light: 下的占位 template 段。
 
 # MQTT broker（同一 compose 网络内用服务名 mosquitto）
 mqtt:
@@ -33,12 +39,14 @@ timer:
     name: "延时关灯"
     duration: "00:05:00"
 
-# 灯占位：现场在 HA 接入智能灯后替换为真实实体名（如 light.desk_lamp）
+# 灯占位：未接真实灯时用日志模拟开关，便于先验证自动化链路。
+# 接入 WiZ 灯泡后，把自动化里两处 light.placeholder_light 引用换成真实实体名，
+# 然后可删除本段占位 template。
 light:
   - platform: template
     lights:
       placeholder_light:
-        friendly_name: "占位灯（替换为真实灯）"
+        friendly_name: "占位灯（替换为 WiZ 灯泡实体）"
         turn_on:
           service: logbook.log
           data:
@@ -63,7 +71,11 @@ automation:
           entity_id: timer.light_off
       - service: light.turn_on
         target:
-          entity_id: light.placeholder_light
+          entity_id: light.placeholder_light   # TODO: 替换为 WiZ 灯泡实体名
+        # 小夜灯可选：开灯时给低亮度暖光（白天正常照明可删掉 brightness/color_temp）
+        # data:
+        #   brightness_pct: 15
+        #   color_temp: 2700
 
   # 无人 → 启动延时关灯
   - alias: "无人_启动延时关灯"
@@ -86,7 +98,7 @@ automation:
     action:
       - service: light.turn_off
         target:
-          entity_id: light.placeholder_light
+          entity_id: light.placeholder_light   # TODO: 替换为 WiZ 灯泡实体名
 
 # 记录历史与日志（默认 SQLite 存储，用于 Logbook 与 24h 进出记录）
 recorder:

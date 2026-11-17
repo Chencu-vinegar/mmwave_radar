@@ -82,6 +82,10 @@ class WebServer:
                     self._read_body()
                     engine.clear_events()
                     self._send_json({"ok": True})
+                elif path == "/api/baseline/learn":
+                    self._read_body()
+                    engine.learn_baseline()
+                    self._send_json({"ok": True, "msg": "已开始采集空房基线，约 30 秒后自动固化"})
                 elif path == "/api/mode/live":
                     self._switch_live()
                 elif path == "/api/upload":

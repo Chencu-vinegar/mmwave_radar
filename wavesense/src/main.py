@@ -86,10 +86,12 @@ def run_web(args, cfg):
     static_dir = os.path.join(base_dir, "web", "static")
     data_dir = os.path.abspath(os.path.join(base_dir, "..", "web_data"))
     history_path = os.path.join(data_dir, "events.json")
+    baseline_path = os.path.join(data_dir, "baseline.json")
     upload_dir = os.path.join(data_dir, "uploads")
 
     engine = MonitorEngine(source, cfg, history_path, pace=pace,
-                           mode=mode, source_name=source_name)
+                           mode=mode, source_name=source_name,
+                           baseline_path=baseline_path)
     engine.start()
     server = WebServer(engine, args.host, args.http_port, static_dir, upload_dir)
     url = f"http://{args.host if args.host != '0.0.0.0' else 'localhost'}:{server.port}"

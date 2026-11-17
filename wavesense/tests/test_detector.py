@@ -24,6 +24,7 @@ CFG = {
         "walk_window": 100,
         "walk_strong_threshold": 2.0e9,
         "walk_strong_frames": 20,
+        "baseline": {"learn_frames": 0, "ratio": 1.8, "long_window": 300},
     }
 }
 
@@ -114,6 +115,42 @@ class TestDetector(unittest.TestCase):
         d = feed(det, 100, 12000, 0)
         self.assertTrue(d.presence)
         self.assertEqual(d.motion_level, 0)
+
+
+class TestBaseline(unittest.TestCase):
+    def test_baseline_not_learned_is_relaxed(self):
+        # 基线未学习：相对条件不约束，行为与旧版一致
+        det = Detector(CFG)
+        d = feed(det, 50, 12000, 12000)
+        self.assertTrue(d.presence)
+
+    def test_baseline_relative_gate_blocks_entry(self):
+        # 已学习基线：绝对阈值满足，但相对基线抬升不足时不进入
+        det = Detector(CFG)
+        det.load_baseline({"range_p95": 1.0e9, "motion_p95": 1.0e7})
+        # range=10000 → 距离门 1.2e9（绝对阈值满足）；基线×1.8=1.8e9，相对不满足
+        d = feed(det, 50, 10000, 10000)
+        self.assertFalse(d.presence)
+
+    def test_baseline_learn_and_roundtrip(self):
+        det = Detector(CFG)
+        det.start_baseline_learn(frames=30)
+        feed(det, 40, 2000, 1000)
+        self.assertIsNotNone(det.baseline_range)
+        bd = det.baseline_dict()
+        self.assertTrue(bd["learned"])
+        det2 = Detector(CFG)
+        det2.load_baseline(bd)
+        self.assertEqual(det2.baseline_range, det.baseline_range)
+        self.assertEqual(det2.baseline_motion, det.baseline_motion)
+
+    def test_detection_exposes_baseline_fields(self):
+        det = Detector(CFG)
+        d = feed(det, 10, 0, 0)
+        dd = d.as_dict()
+        self.assertIn("baseline_ready", dd)
+        self.assertIn("baseline_range", dd)
+        self.assertIn("range_lift", dd)
 
 
 if __name__ == "__main__":

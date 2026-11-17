@@ -34,6 +34,9 @@ class Detection:
     short_motion_energy: float   # 短窗动作区（动作分级）
     far_gate_ratio: float        # 短窗远门（门4-5）能量占比
     frames_since_active: int     # 距上次活动尖峰的帧数
+    baseline_ready: bool         # 空房基线是否已学习完成
+    baseline_range: float        # 基线距离门 p95（未学习为 None）
+    range_lift: float            # 当前距离门相对长窗中位数的抬升倍数
 
     def as_dict(self):
         return {
@@ -45,6 +48,9 @@ class Detection:
             "short_motion_energy": self.short_motion_energy,
             "far_gate_ratio": self.far_gate_ratio,
             "frames_since_active": self.frames_since_active,
+            "baseline_ready": self.baseline_ready,
+            "baseline_range": self.baseline_range,
+            "range_lift": self.range_lift,
         }
 
 
@@ -76,10 +82,27 @@ class Detector:
         self.walk_strong_threshold = float(d.get("walk_strong_threshold", 2.0e9))
         self.walk_strong_frames = int(d.get("walk_strong_frames", 20))
 
+        # 基线自适应：开机/学习期采集空房底噪，活动判据在绝对阈值之上
+        # 叠加"相对基线抬升"条件，适应不同房间/档位的底噪水平。
+        b = d.get("baseline", {}) if isinstance(d.get("baseline"), dict) else {}
+        self.baseline_learn_frames = int(b.get("learn_frames", 0))
+        self.baseline_ratio = float(b.get("ratio", 1.8))
+        self.long_win = int(b.get("long_window", 300))
+
         self.short_gate_q = deque(maxlen=self.short_win)
         self.short_range_q = deque(maxlen=self.short_win)
         self.short_motion_q = deque(maxlen=self.short_win)
         self.walk_motion_q = deque(maxlen=self.walk_win)
+        self.long_range_q = deque(maxlen=self.long_win)
+
+        # 空房基线（p95）；None 表示尚未学习，相对条件退化为不约束
+        self.baseline_range = None
+        self.baseline_motion = None
+        self._base_rng = []
+        self._base_mot = []
+        self._baseline_learning = self.baseline_learn_frames > 0
+        self._baseline_target = self.baseline_learn_frames
+
         self.presence = False
         self.enter_cnt = 0
         self.gap = 0
@@ -89,9 +112,56 @@ class Detector:
         self.short_range_q.clear()
         self.short_motion_q.clear()
         self.walk_motion_q.clear()
+        self.long_range_q.clear()
         self.presence = False
         self.enter_cnt = 0
         self.gap = 0
+
+    # ---------- 空房基线 ----------
+    def start_baseline_learn(self, frames=None):
+        """网页按钮触发：清空已收集样本，重新采集空房基线。
+
+        调用时请确保房间无人；采集满 frames 帧后自动固化为基线。
+        """
+        self._base_rng.clear()
+        self._base_mot.clear()
+        self._baseline_target = frames or self.baseline_learn_frames or 14400
+        self._baseline_learning = True
+
+    def baseline_dict(self):
+        """导出基线，供持久化到 JSON。"""
+        return {
+            "range_p95": self.baseline_range,
+            "motion_p95": self.baseline_motion,
+            "learned": self.baseline_range is not None,
+        }
+
+    def load_baseline(self, data):
+        """从 JSON 载入已保存的基线；缺字段则忽略。"""
+        if not isinstance(data, dict):
+            return
+        rp = data.get("range_p95")
+        mp = data.get("motion_p95")
+        if rp is not None:
+            self.baseline_range = float(rp)
+        if mp is not None:
+            self.baseline_motion = float(mp)
+        self._baseline_learning = False
+
+    def _finish_baseline(self):
+        if not self._base_rng:
+            return
+        self.baseline_range = float(np.percentile(self._base_rng, 95))
+        self.baseline_motion = float(np.percentile(self._base_mot, 95))
+        self._baseline_learning = False
+
+    def _update_baseline(self, short_range, short_motion):
+        if not self._baseline_learning:
+            return
+        self._base_rng.append(short_range)
+        self._base_mot.append(short_motion)
+        if len(self._base_rng) >= self._baseline_target:
+            self._finish_baseline()
 
     def update(self, frame):
         rng = frame.range_energy()
@@ -109,14 +179,27 @@ class Detector:
         short_motion = float(np.mean(self.short_motion_q))
         # 走动记忆：存每帧的短窗动作门，用于统计近期强动作帧数
         self.walk_motion_q.append(short_motion)
+        # 长窗距离门中位数：辅助判断远距离静坐的弱抬升
+        self.long_range_q.append(short_range)
+        long_med = float(np.median(self.long_range_q)) if self.long_range_q else short_range
+        range_lift = short_range / long_med if long_med > 0 else 1.0
+
+        # 基线学习期：只采集空房底噪，不参与活动判据
+        self._update_baseline(short_range, short_motion)
 
         # 远门比例：短窗内门4-5能量占比（近门电器接近 0，人呼吸约 0.1-0.4）
         gate_sum = np.sum(self.short_gate_q, axis=0)
         gate_total = float(gate_sum.sum())
         far_ratio = float((gate_sum[4] + gate_sum[5]) / gate_total) if gate_total > 0 else 0.0
 
-        # 有效尖峰：距离门超阈值，且能量传播到远门（排除近门电器）
-        active = short_range > self.active_threshold and far_ratio >= self.far_gate_ratio
+        # 有效尖峰：绝对阈值 + 相对基线抬升 + 远门传播，三者同时满足。
+        # 基线未学习完成时，相对条件退化为不约束（保持旧行为）。
+        rel_ok = True
+        if self.baseline_range is not None:
+            rel_ok = short_range > self.baseline_range * self.baseline_ratio
+        active = (short_range > self.active_threshold
+                  and rel_ok
+                  and far_ratio >= self.far_gate_ratio)
 
         if not self.presence:
             # 进入：人进门/坐下，距离门短窗连续超阈值
@@ -164,4 +247,7 @@ class Detector:
             short_motion_energy=short_motion,
             far_gate_ratio=far_ratio,
             frames_since_active=self.gap,
+            baseline_ready=self.baseline_range is not None,
+            baseline_range=self.baseline_range,
+            range_lift=range_lift,
         )

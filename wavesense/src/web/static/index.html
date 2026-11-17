@@ -93,6 +93,11 @@
   .empty-tip { color: #9ca3af; font-size: 13px; padding: 12px 4px; }
   .finish-badge { font-size: 12px; color: #b45309; background: #fef3c7; padding: 3px 10px; border-radius: 999px; }
 
+  .reason-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+  .reason-row { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; border-bottom: 1px dashed #f0ece3; }
+  .reason-row .lab { color: #6b7280; }
+  .reason-row .val { font-weight: 600; font-variant-numeric: tabular-nums; }
+
   @media (max-width: 640px) {
     .grid { grid-template-columns: 1fr; }
     .ana-grid { grid-template-columns: repeat(2, 1fr); }
@@ -165,6 +170,18 @@
         <div><span class="pill lv0" id="levelPill">—</span></div>
         <div class="sub" id="levelSub">等待数据</div>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>判定依据</h2>
+      <div class="reason-grid">
+        <div class="reason-row"><span class="lab">距离门短窗</span><span class="val" id="rngVal">—</span></div>
+        <div class="reason-row"><span class="lab">动作门短窗</span><span class="val" id="motVal">—</span></div>
+        <div class="reason-row"><span class="lab">远门比例</span><span class="val" id="farVal">—</span></div>
+        <div class="reason-row"><span class="lab">长窗抬升</span><span class="val" id="liftVal">—</span></div>
+        <div class="reason-row"><span class="lab">空房基线</span><span class="val" id="baseVal">未学习</span></div>
+      </div>
+      <button class="act btn-ghost" id="learnBaselineBtn" style="margin-top:12px;">学习空房基线</button>
     </div>
 
     <div class="card full">
@@ -346,6 +363,13 @@ function updateStatus(s) {
     pill.className = "pill " + LV_CLASS[L.motion_level];
     document.getElementById("levelSub").textContent =
       "动作门 " + fmtSci(L.short_motion_energy) + " · 距离门 " + fmtSci(L.short_range_energy);
+
+    document.getElementById("rngVal").textContent = fmtSci(L.short_range_energy);
+    document.getElementById("motVal").textContent = fmtSci(L.short_motion_energy);
+    document.getElementById("farVal").textContent = (L.far_gate_ratio * 100).toFixed(1) + "%";
+    document.getElementById("liftVal").textContent = Number(L.range_lift || 1).toFixed(2) + "×";
+    document.getElementById("baseVal").textContent = L.baseline_ready
+      ? "已学习 · " + fmtSci(L.baseline_range) : "未学习";
   }
 }
 
@@ -427,6 +451,18 @@ document.getElementById("clearBtn").addEventListener("click", async function () 
 });
 document.getElementById("exportBtn").addEventListener("click", function () {
   window.location.href = "/api/events/export";
+});
+document.getElementById("learnBaselineBtn").addEventListener("click", async function () {
+  const btn = this;
+  btn.disabled = true;
+  try {
+    const r = await fetch("/api/baseline/learn", { method: "POST" });
+    const j = await r.json();
+    alert(j.msg || "已开始采集空房基线");
+  } catch (e) {
+    alert("基线学习触发失败");
+  }
+  btn.disabled = false;
 });
 
 loadPorts();
