@@ -101,6 +101,12 @@ wavesense/
   docs/硬件连接方式.jpg
 ```
 
+## 文档索引
+
+- `操作指南.md`：面向使用者的通俗手册（启动、三种数据源、面板查看、接雷达、接灯、录数据、排障）。
+- `deploy/README.md`：本地 Mosquitto + Home Assistant 部署与 WiZ 灯泡接入步骤。
+- `docs/快速上手.md`：早期给同学的简版上手；`docs/使用详解.md`、`docs/雷达参数说明.md` 为补充资料。
+
 ## 快速开始
 
 ```bash
