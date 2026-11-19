@@ -54,9 +54,24 @@ PYTHONPATH=. python -m src.main --source simulated --mqtt
 灯型：PHILIPS Connected by WiZ，WiFi（2.4GHz）+ 蓝牙，无网关。HA 用官方 WiZ 集成
 本地局域网控制（Local Push，不走云），配网一次后断外网也能开关/调光/调色。
 
+包装规格（实物核对）：
+
+| 项 | 参数 |
+|---|---|
+| 品类 | Full Color Smart LED 全彩智能灯泡 |
+| 螺口 / 尺寸 | E27，Ø60mm × 111mm |
+| 功率 / 光通量 | 8.5W / 806 流明 |
+| 光色 | 1600 万彩光 + 暖白到冷白光可调 |
+| 无线 | WiFi 2.4GHz 802.11b/g/n + 蓝牙 |
+| 供电 | 220–240Vac 50/60Hz，仅限室内 |
+| 显色 / 寿命 | CRI 80，标称寿命 25000h |
+| 认证 / 条码 | CMIIT ID `2021DP3313`，包装条码 `196705077665` |
+
+> 不能接传统调光开关，调光调色走 WiZ App；灯泡只配合 WiZ App / WiZ 产品使用。
+
 ### 1. 灯泡配网（手机 App，只做一次）
 
-1. 灯泡拧入灯座通电，手机安装 WiZ App（iOS / Android）。
+1. 灯泡拧入灯座通电，手机安装 WiZ App（应用商店搜 **WiZ CN**，iOS / Android）。
 2. App 内按提示把灯泡配到家里 **2.4GHz** WiFi（灯泡不支持 5GHz，确认路由器 2.4G 已开）。
 3. 配网后进 App：设置 → 安全设置，打开 **Allow local communication（允许本地通信）**，
    默认应为开启；这是 HA 能本地控灯的前提。
