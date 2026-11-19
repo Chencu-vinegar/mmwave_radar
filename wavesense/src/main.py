@@ -88,10 +88,22 @@ def run_web(args, cfg):
     history_path = os.path.join(data_dir, "events.json")
     baseline_path = os.path.join(data_dir, "baseline.json")
     upload_dir = os.path.join(data_dir, "uploads")
+    wiz_path = os.path.join(data_dir, "wiz.json")
+
+    wiz_cfg = cfg.get("wiz", {}) or {}
+    from src.wiz_controller import WizLightController
+    wiz = WizLightController(
+        ip=wiz_cfg.get("ip", ""),
+        brightness=wiz_cfg.get("brightness", 200),
+        warm_white=wiz_cfg.get("warm_white", 255),
+        signing_key=wiz_cfg.get("signing_key", ""),
+    )
+    wiz_enabled = bool(wiz_cfg.get("enabled", True))
 
     engine = MonitorEngine(source, cfg, history_path, pace=pace,
                            mode=mode, source_name=source_name,
-                           baseline_path=baseline_path)
+                           baseline_path=baseline_path,
+                           wiz=wiz, wiz_path=wiz_path, wiz_enabled=wiz_enabled)
     engine.start()
     server = WebServer(engine, args.host, args.http_port, static_dir, upload_dir)
     url = f"http://{args.host if args.host != '0.0.0.0' else 'localhost'}:{server.port}"

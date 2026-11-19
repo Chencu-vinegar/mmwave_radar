@@ -8,6 +8,9 @@
   GET  /api/events/export    导出 CSV（带 BOM，Excel 可直接打开）
   GET  /api/serial/ports     列出可用串口
   POST /api/mode/live        切换到实时串口
+  GET  /api/light            灯控状态（IP / 库就绪 / 最近结果）
+  POST /api/light/ip         保存灯泡 IP（持久化到 web_data/wiz.json）
+  POST /api/light/test       测试开 / 关 / 探测连通（action: on/off/probe）
   POST /api/upload           上传 .gz/.dat，切换到文件回放并分析
 """
 import csv
@@ -73,6 +76,8 @@ class WebServer:
                     self._serve_csv()
                 elif path == "/api/serial/ports":
                     self._send_json({"ports": self._list_ports()})
+                elif path == "/api/light":
+                    self._send_json(engine.light_status())
                 else:
                     self._send("未找到", "text/plain; charset=utf-8", 404)
 
@@ -88,6 +93,10 @@ class WebServer:
                     self._send_json({"ok": True, "msg": "已开始采集空房基线，约 30 秒后自动固化"})
                 elif path == "/api/mode/live":
                     self._switch_live()
+                elif path == "/api/light/ip":
+                    self._set_light_ip()
+                elif path == "/api/light/test":
+                    self._test_light()
                 elif path == "/api/upload":
                     self._handle_upload()
                 else:
@@ -123,6 +132,31 @@ class WebServer:
                 from src.data_source import SerialSource
                 engine.switch_source(SerialSource(port), False, "live", port)
                 self._send_json({"ok": True, "port": port, "mode": "live"})
+
+            def _set_light_ip(self):
+                raw = self._read_body()
+                ip = ""
+                if raw:
+                    try:
+                        ip = json.loads(raw.decode("utf-8")).get("ip", "")
+                    except ValueError:
+                        ip = ""
+                ok, msg = engine.set_light_ip(ip)
+                if ok:
+                    self._send_json({"ok": True, "ip": msg})
+                else:
+                    self._send_json({"ok": False, "error": msg}, 400)
+
+            def _test_light(self):
+                raw = self._read_body()
+                action = "probe"
+                if raw:
+                    try:
+                        action = json.loads(raw.decode("utf-8")).get("action", "probe")
+                    except ValueError:
+                        pass
+                ok, msg = engine.test_light(action)
+                self._send_json({"ok": ok, "msg": msg})
 
             def _handle_upload(self):
                 ctype = self.headers.get("Content-Type", "")

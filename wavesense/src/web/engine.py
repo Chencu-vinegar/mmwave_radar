@@ -21,10 +21,14 @@ FPS = 480                  # 逻辑帧率，用于把帧数换算成时长
 
 class MonitorEngine:
     def __init__(self, source, cfg, history_path, pace=False, mode="live",
-                 source_name="", baseline_path=None):
+                 source_name="", baseline_path=None, wiz=None, wiz_path=None,
+                 wiz_enabled=True):
         self.cfg = cfg
         self.history_path = history_path
         self.baseline_path = baseline_path
+        self.wiz = wiz
+        self.wiz_path = wiz_path
+        self.wiz_enabled = wiz_enabled
         self.frame_interval = 1.0 / FPS
 
         self._lock = threading.Lock()
@@ -45,6 +49,19 @@ class MonitorEngine:
             except (ValueError, OSError):
                 pass
         self._baseline_saved = self.detector.baseline_range is not None
+
+        # 载入已保存的灯泡 IP / 签名密钥（若有）
+        if self.wiz is not None and wiz_path and os.path.exists(wiz_path):
+            try:
+                with open(wiz_path, "r", encoding="utf-8") as f:
+                    saved = json.load(f)
+                if saved.get("ip"):
+                    self.wiz.set_ip(saved["ip"])
+                if saved.get("signing_key"):
+                    self.wiz.set_signing_key(saved["signing_key"])
+            except (ValueError, OSError):
+                pass
+
         self.latest = None
         self.series = deque(maxlen=SERIES_LEN)
         self.events = self._load_history()
@@ -55,6 +72,7 @@ class MonitorEngine:
 
         self._prev_presence = None
         self._prev_level = None
+        self._pending_light = None
 
         # 整段统计
         self._n_present = 0
@@ -161,6 +179,7 @@ class MonitorEngine:
                         self._n_enter += 1
                     else:
                         self._n_leave += 1
+                    self._pending_light = "on" if d.presence else "off"
                     new_events.append(self._event(
                         "进入" if d.presence else "离开", frame.index, d))
                 if d.presence and self._prev_level is not None and d.motion_level != self._prev_level:
@@ -175,6 +194,14 @@ class MonitorEngine:
 
             if new_events:
                 self._save_history()
+
+            # 控灯在锁外执行，避免网络 IO 阻塞状态更新；进入开灯、离开关灯
+            if self._pending_light and self.wiz is not None and self.wiz_enabled:
+                if self._pending_light == "on":
+                    self.wiz.turn_on()
+                else:
+                    self.wiz.turn_off()
+            self._pending_light = None
 
             if self.pace and self.frame_interval:
                 time.sleep(self.frame_interval)
@@ -232,6 +259,7 @@ class MonitorEngine:
                 "finished": self.finished,
                 "event_count": len(self.events),
                 "analysis": self.analysis,
+                "light": self.light_status(),
             }
 
     def get_events(self):
@@ -243,6 +271,46 @@ class MonitorEngine:
             self.events = []
         self._save_history()
         return True
+
+    # ---------- WiZ 灯控 ----------
+    def light_status(self):
+        if self.wiz is None:
+            return {"configured": False, "ip": "", "library_ready": False,
+                    "last_state": None, "last_result": None}
+        return self.wiz.status_dict()
+
+    def set_light_ip(self, ip):
+        """保存灯泡 IP 并持久化；返回 (ok, 说明)。"""
+        if self.wiz is None:
+            return False, "控灯模块未初始化"
+        ok = self.wiz.set_ip(ip)
+        if ok:
+            self._save_wiz()
+            return True, self.wiz.ip
+        return False, "IP 格式不合法（应为如 192.168.0.101）"
+
+    def test_light(self, action):
+        """网页手动测试：action=on/off/probe。"""
+        if self.wiz is None:
+            return False, "控灯模块未初始化"
+        if action == "on":
+            return self.wiz.turn_on()
+        if action == "off":
+            return self.wiz.turn_off()
+        return self.wiz.test_connection()
+
+    def _save_wiz(self):
+        if not self.wiz_path:
+            return
+        tmp = self.wiz_path + ".tmp"
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump({"ip": self.wiz.ip or "",
+                           "signing_key": self.wiz.signing_key or ""},
+                          f, ensure_ascii=False)
+            os.replace(tmp, self.wiz_path)
+        except OSError:
+            pass
 
     # ---------- 空房基线 ----------
     def learn_baseline(self):

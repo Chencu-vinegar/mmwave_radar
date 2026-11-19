@@ -51,27 +51,27 @@ PYTHONPATH=. python -m src.main --source simulated --mqtt
 
 ## 接入真实灯：飞利浦 WiZ 全彩灯泡
 
-灯型：PHILIPS Connected by WiZ，WiFi（2.4GHz）+ 蓝牙，无网关。HA 用官方 WiZ 集成
-本地局域网控制（Local Push，不走云），配网一次后断外网也能开关/调光/调色。
+灯型：PHILIPS Connected by WiZ，WiFi（2.4GHz）+ 蓝牙，无网关。两种控制路线二选一，
+均在本地局域网完成，配网一次后断外网也能开关/调光/调色。
 
-包装规格（实物核对）：
+### 控制路线（二选一）
 
-| 项 | 参数 |
-|---|---|
-| 品类 | Full Color Smart LED 全彩智能灯泡 |
-| 螺口 / 尺寸 | E27，Ø60mm × 111mm |
-| 功率 / 光通量 | 8.5W / 806 流明 |
-| 光色 | 1600 万彩光 + 暖白到冷白光可调 |
-| 无线 | WiFi 2.4GHz 802.11b/g/n + 蓝牙 |
-| 供电 | 220–240Vac 50/60Hz，仅限室内 |
-| 显色 / 寿命 | CRI 80，标称寿命 25000h |
-| 认证 / 条码 | CMIIT ID `2021DP3313`，包装条码 `196705077665` |
+**默认：pywizlight 本地直连（不经 HA / 云）**
 
-> 不能接传统调光开关，调光调色走 WiZ App；灯泡只配合 WiZ App / WiZ 产品使用。
+- Python 进程内用 `pywizlight` 通过 UDP（端口 38899）直接控制灯泡：判有人开灯、判无人关灯。
+- 启动网页后，在"灯控联动"卡片填灯泡 IP、点保存即可；IP 持久化到 `web_data/wiz.json`，
+  下次启动自动载入。依赖已写入 `requirements.txt`（`pywizlight`）。
+- 新固件返回 `-32602 Invalid params`：先在 WiZ App「设置 → 安全」允许本地控制；
+  仍不行则导出家庭 JSON 取 `udp_signing_key`，填入 `config/config.yaml` 的 `wiz.signing_key`。
+- 命令超时/无反应：确认电脑与灯泡同网段、同 2.4G，防火墙放行 UDP 38899，路由器未开 AP 隔离。
+
+**可选：Home Assistant + WiZ 集成（下方 HA 步骤）**
+
+需要 Docker 起 HA + Mosquitto，程序发 MQTT 由 HA 控灯；仅在需要 HA 仪表盘 / 多灯编排时使用。
 
 ### 1. 灯泡配网（手机 App，只做一次）
 
-1. 灯泡拧入灯座通电，手机安装 WiZ App（应用商店搜 **WiZ CN**，iOS / Android）。
+1. 灯泡拧入灯座通电，手机安装 WiZ App（iOS / Android）。
 2. App 内按提示把灯泡配到家里 **2.4GHz** WiFi（灯泡不支持 5GHz，确认路由器 2.4G 已开）。
 3. 配网后进 App：设置 → 安全设置，打开 **Allow local communication（允许本地通信）**，
    默认应为开启；这是 HA 能本地控灯的前提。

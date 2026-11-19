@@ -145,6 +145,21 @@
     <div class="status-line" id="uploadStatus">支持授权软件导出的 .gz 或原始 .dat 二进制录制。</div>
   </div>
 
+  <!-- 灯控联动设置 -->
+  <div class="card" id="lightCard">
+    <h2>灯控联动（WiZ 灯泡 · 局域网直连）</h2>
+    <div class="row">
+      <input type="text" id="lightIp" placeholder="灯泡 IP，如 192.168.0.101" autocomplete="off">
+      <button class="act btn-primary" id="lightSaveBtn">保存 IP</button>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <button class="act btn-ghost" id="lightOnBtn">测试开灯</button>
+      <button class="act btn-ghost" id="lightOffBtn">测试关灯</button>
+      <button class="act btn-ghost" id="lightProbeBtn">读取灯泡状态</button>
+    </div>
+    <div class="status-line" id="lightStatus">读取灯控状态…</div>
+  </div>
+
   <!-- 分析报告 -->
   <div class="card" id="analysisCard" style="display:none;">
     <h2>数据分析报告</h2>
@@ -315,6 +330,62 @@ document.getElementById("uploadBtn").addEventListener("click", async function ()
   document.getElementById("uploadBtn").disabled = false;
 });
 
+/* ---------- 灯控联动（WiZ 直连） ---------- */
+function renderLight(l) {
+  if (!l) return;
+  const input = document.getElementById("lightIp");
+  if (document.activeElement !== input) input.value = l.ip || "";
+  let text, cls = "";
+  if (!l.library_ready) {
+    text = "未安装 pywizlight 库：请在运行程序的 Python 环境执行 pip install pywizlight。";
+    cls = "err";
+  } else if (!l.configured) {
+    text = "未配置灯泡 IP：填入与电脑同一 2.4GHz WiFi 下的灯泡 IP，点保存。";
+  } else {
+    text = "已配置灯泡 IP：" + l.ip;
+    cls = "ok";
+  }
+  const lr = l.last_result;
+  if (lr) {
+    text += "　最近" + lr.action + "：" + lr.msg + (lr.time ? "（" + lr.time + "）" : "");
+    cls = lr.ok ? "ok" : "err";
+  }
+  setLine("lightStatus", text, cls);
+}
+
+document.getElementById("lightSaveBtn").addEventListener("click", async function () {
+  const ip = document.getElementById("lightIp").value.trim();
+  this.disabled = true;
+  try {
+    const r = await fetch("/api/light/ip", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ip: ip })
+    });
+    const j = await r.json();
+    if (j.ok) { setLine("lightStatus", "IP 已保存：" + j.ip, "ok"); }
+    else { setLine("lightStatus", j.error || "保存失败", "err"); }
+  } catch (e) { setLine("lightStatus", "保存失败：" + e, "err"); }
+  this.disabled = false;
+});
+
+async function testLight(action, btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch("/api/light/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: action })
+    });
+    const j = await r.json();
+    setLine("lightStatus", (j.ok ? "" : "失败：") + j.msg, j.ok ? "ok" : "err");
+  } catch (e) { setLine("lightStatus", "测试失败：" + e, "err"); }
+  btn.disabled = false;
+}
+document.getElementById("lightOnBtn").addEventListener("click", function () { testLight("on", this); });
+document.getElementById("lightOffBtn").addEventListener("click", function () { testLight("off", this); });
+document.getElementById("lightProbeBtn").addEventListener("click", function () { testLight("probe", this); });
+
 /* ---------- 分析报告 ---------- */
 function renderAnalysis(a) {
   const card = document.getElementById("analysisCard");
@@ -371,6 +442,7 @@ function updateStatus(s) {
     document.getElementById("baseVal").textContent = L.baseline_ready
       ? "已学习 · " + fmtSci(L.baseline_range) : "未学习";
   }
+  renderLight(s.light);
 }
 
 function drawChart(series) {

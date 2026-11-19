@@ -48,3 +48,12 @@ mqtt:
 
 # 灯控：presence 从 1 变 0 后延时多少秒关灯（演示时可临时调小）
 light_off_delay_sec: 300
+
+# WiZ 灯泡本地直连（pywizlight，UDP 局域网，不走云 / HA）。
+# 灯泡与电脑连同一 2.4GHz WiFi；IP 也可在网页设置页填写，保存后写入 web_data/wiz.json。
+wiz:
+  enabled: true
+  ip: ""                 # 如 192.168.0.101；留空则不控灯
+  brightness: 200        # 开灯亮度 0-255
+  warm_white: 255       # 暖白 0-255
+  signing_key: ""       # 新固件返回 -32602 时，从 WiZ App 导出家庭 JSON 取 udp_signing_key 填入

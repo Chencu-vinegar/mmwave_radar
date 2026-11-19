@@ -27,6 +27,13 @@ DEFAULTS = {
     },
     "mqtt": {"host": "localhost", "port": 1883, "topic": "wavesense/room1"},
     "light_off_delay_sec": 300,
+    "wiz": {
+        "enabled": True,
+        "ip": "",                  # 灯泡局域网 IP，网页设置页填写后持久化到 web_data/wiz.json
+        "brightness": 200,         # 开灯亮度 0-255
+        "warm_white": 255,         # 暖白 0-255
+        "signing_key": "",         # 新固件需要时填 UDP 签名密钥（一般留空）
+    },
 }
 
 
