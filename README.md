@@ -6,10 +6,12 @@
 
 | 目录 | 说明 | 状态 |
 |------|------|------|
-| [radar_viewer](./radar_viewer) | DEV202H（ICL1122）毫米波雷达数据读取与收集软件 | 初版 v0.1 |
+| [wavesense](./wavesense) | 主工程：24GHz 毫米波人体存在检测、动作分级与 WiZ 灯控联动 | 当前版本 |
+| [qianketian/radar_viewer](./qianketian/radar_viewer) | 旧版雷达数据读取与收集软件 | 初版 v0.1 |
 
 ## 说明
 
+- `qianketian/` 为早期上传资料归档：`samples/` 历史样本、`images/` 截图、`dist/` 打包程序、`docs/` 方案文档、`radar_viewer/` 旧版查看器。
 - 各子项目的安装、使用、构建方式请参见其目录下的 `README.md`。
 - 本仓库为个人学习与验证用途，代码按现状提供。
 
