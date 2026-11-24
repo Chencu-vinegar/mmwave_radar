@@ -83,15 +83,27 @@ def replay(path, cfg):
     }
 
 
-def row(name, scene, r):
+def row(name, scene, r, meta=None):
     lv = r["levels"]
     lv_s = f"不动{lv[0]:.0f}/小{lv[1]:.0f}/大{lv[2]:.0f}"
     if r["first_present_s"] is not None:
         timing = f" 首有人@{r['first_present_s']:.1f}s 末有人@{r['last_present_s']:.1f}s"
     else:
         timing = " 全程未进入"
+    # 标注了进门/出门秒点时，附进入/离开延迟（正=晚于标注时刻）
+    delay = ""
+    if isinstance(meta, dict):
+        ein = meta.get("enter_s")
+        eout = meta.get("leave_s")
+        if ein is not None:
+            if r["first_present_s"] is not None:
+                delay += f" 进迟{r['first_present_s'] - ein:+.1f}s"
+            else:
+                delay += " 进门未检出"
+        if eout is not None and r["last_present_s"] is not None:
+            delay += f" 离迟{r['last_present_s'] - eout:+.1f}s"
     return (f"{name:<34}{scene:<6}{r['n']:>7}帧 有人{r['present_ratio']:>5.1f}%  "
-            f"进{r['enter']} 离{r['leave']}{timing}  {lv_s}")
+            f"进{r['enter']} 离{r['leave']}{timing}{delay}  {lv_s}")
 
 
 def main():
@@ -115,7 +127,7 @@ def main():
             continue
         r = replay(path, cfg)
         groups[scene].append((fn, r))
-        print(row(fn, scene, r))
+        print(row(fn, scene, r, meta))
 
     print("=" * 110)
     print("【dataset 纯段】")
