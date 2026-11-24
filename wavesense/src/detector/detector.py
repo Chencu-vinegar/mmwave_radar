@@ -60,8 +60,9 @@ class Detector:
         self.short_win = int(d.get("short_window", 30))
 
         # 活动判据：短窗距离门（空房最大约 1.15e9，静坐尖峰约 3-5e9）
-        self.active_threshold = float(d.get("active_threshold", 1.2e9))
-        self.enter_frames = int(d.get("enter_frames", 5))
+        # 兜底默认值与 config/config.yaml 保持一致，避免配置缺项时退回旧阈值
+        self.active_threshold = float(d.get("active_threshold", 1.8e9))
+        self.enter_frames = int(d.get("enter_frames", 10))
 
         # 离开：连续无活动尖峰（静坐最长间隔约 10852，取 12000 留余量）
         self.leave_gap = int(d.get("leave_gap_frames", 12000))
@@ -73,7 +74,7 @@ class Detector:
         # 近门电器过滤：短窗尖峰必须有一定比例能量传播到远门（门4-5）。
         # 近门电器（饮水机/风扇等）的尖峰只在近门，远门比例 <0.05；
         # 人呼吸的尖峰通过多径传播到所有门，远门比例通常 >=0.1（纯数据集标定）。
-        self.far_gate_ratio = float(d.get("far_gate_ratio", 0.05))
+        self.far_gate_ratio = float(d.get("far_gate_ratio", 0.08))
 
         # 走动保持：来回走动时转身会进入角度盲区，当下动作门短暂回落。
         # 用较长记忆窗口统计"强动作帧数"，走动的强动作成簇出现，

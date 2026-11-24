@@ -44,6 +44,10 @@ def replay(path, cfg):
     present = 0
     levels = [0, 0, 0]
     n_enter = n_leave = 0
+    first_present = -1
+    last_present = -1
+    enter_idx = []
+    leave_idx = []
     prev = False
     seq = []
     for frame in FileReplaySource(path):
@@ -53,10 +57,15 @@ def replay(path, cfg):
         if d.presence:
             present += 1
             levels[d.motion_level] += 1
+            if first_present < 0:
+                first_present = n
+            last_present = n
         if d.presence and not prev:
             n_enter += 1
+            enter_idx.append(n)
         if prev and not d.presence:
             n_leave += 1
+            leave_idx.append(n)
         prev = d.presence
     tot = sum(levels) or 1
     return {
@@ -67,14 +76,22 @@ def replay(path, cfg):
         "levels": tuple(v / tot * 100 for v in levels),
         "longest_present": longest(seq, True),
         "longest_absent": longest(seq, False),
+        "first_present_s": first_present / FPS if first_present >= 0 else None,
+        "last_present_s": last_present / FPS if last_present >= 0 else None,
+        "enter_idx": enter_idx,
+        "leave_idx": leave_idx,
     }
 
 
 def row(name, scene, r):
     lv = r["levels"]
     lv_s = f"不动{lv[0]:.0f}/小{lv[1]:.0f}/大{lv[2]:.0f}"
+    if r["first_present_s"] is not None:
+        timing = f" 首有人@{r['first_present_s']:.1f}s 末有人@{r['last_present_s']:.1f}s"
+    else:
+        timing = " 全程未进入"
     return (f"{name:<34}{scene:<6}{r['n']:>7}帧 有人{r['present_ratio']:>5.1f}%  "
-            f"进{r['enter']} 离{r['leave']}  {lv_s}")
+            f"进{r['enter']} 离{r['leave']}{timing}  {lv_s}")
 
 
 def main():

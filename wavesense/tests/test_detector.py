@@ -15,8 +15,8 @@ from src.detector import Detector
 CFG = {
     "detector": {
         "short_window": 30,
-        "active_threshold": 1.2e9,
-        "enter_frames": 5,
+        "active_threshold": 1.8e9,
+        "enter_frames": 10,
         "leave_gap_frames": 100,
         "small_move_threshold": 4.0e8,
         "large_move_threshold": 2.6e9,
@@ -65,32 +65,32 @@ class TestDetector(unittest.TestCase):
 
     def test_enter_and_large_move(self):
         det = Detector(CFG)
-        # range=12000 → 距离门 1.728e9（活动）；motion=12000 → 动作区 2.88e9（大动）
-        d = feed(det, 50, 12000, 12000)
+        # range=15000 → 距离门 2.70e9（活动，>1.8e9）；motion=15000 → 动作区 4.50e9（大动）
+        d = feed(det, 50, 15000, 15000)
         self.assertTrue(d.presence)
         self.assertEqual(d.motion_level, 2)
 
     def test_small_move_level(self):
         det = Detector(CFG)
-        # range=12000（活动进入）；motion=5000 → 动作区 5e8（小动）
-        d = feed(det, 50, 12000, 5000)
+        # range=15000（活动进入）；motion=5000 → 动作区 5e8（小动）
+        d = feed(det, 50, 15000, 5000)
         self.assertTrue(d.presence)
         self.assertEqual(d.motion_level, 1)
 
     def test_sparse_peak_keeps_presence(self):
         det = Detector(CFG)
-        feed(det, 40, 12000, 12000)
+        feed(det, 40, 15000, 15000)
         self.assertTrue(det.presence)
         # 稀疏尖峰：无活动段（gap 累积但未到 leave_gap）后跟一团尖峰（短窗重新 active、重置 gap）
         for _ in range(3):
             feed(det, 80, 0, 0)
             self.assertTrue(det.presence, "无活动段内误离开")
-            feed(det, 35, 12000, 12000)
+            feed(det, 35, 15000, 15000)
         self.assertTrue(det.presence)
 
     def test_leave_after_no_activity(self):
         det = Detector(CFG)
-        feed(det, 40, 12000, 12000)
+        feed(det, 40, 15000, 15000)
         self.assertTrue(det.presence)
         # 持续无活动：短窗滑出 + gap 超过 leave_gap，判无人
         d = feed(det, 200, 0, 0)
@@ -99,20 +99,20 @@ class TestDetector(unittest.TestCase):
 
     def test_walk_hold_keeps_large_in_blind_turn(self):
         det = Detector(CFG)
-        # 走动：强动作（motion=12000，动作区 2.88e9 >= 强动作阈值）积累强动作帧
-        feed(det, 40, 12000, 12000)
+        # 走动：强动作（motion=15000，动作区 4.50e9 >= 强动作阈值）积累强动作帧
+        feed(det, 40, 15000, 15000)
         self.assertTrue(det.presence)
         # 转身盲区：当下动作门回落到 0，但记忆窗口内强动作帧数仍足够，保持大动
-        d = feed(det, 30, 12000, 0)
+        d = feed(det, 30, 15000, 0)
         self.assertTrue(d.presence)
         self.assertEqual(d.motion_level, 2)
 
     def test_sit_still_drops_after_strong_frames_leave(self):
         det = Detector(CFG)
-        feed(det, 40, 12000, 12000)
+        feed(det, 40, 15000, 15000)
         self.assertTrue(det.presence)
         # 静坐：强动作帧从记忆窗口滑出，当下动作门低，判不动（但仍有人）
-        d = feed(det, 100, 12000, 0)
+        d = feed(det, 100, 15000, 0)
         self.assertTrue(d.presence)
         self.assertEqual(d.motion_level, 0)
 
@@ -121,15 +121,15 @@ class TestBaseline(unittest.TestCase):
     def test_baseline_not_learned_is_relaxed(self):
         # 基线未学习：相对条件不约束，行为与旧版一致
         det = Detector(CFG)
-        d = feed(det, 50, 12000, 12000)
+        d = feed(det, 50, 15000, 15000)
         self.assertTrue(d.presence)
 
     def test_baseline_relative_gate_blocks_entry(self):
         # 已学习基线：绝对阈值满足，但相对基线抬升不足时不进入
         det = Detector(CFG)
-        det.load_baseline({"range_p95": 1.0e9, "motion_p95": 1.0e7})
-        # range=10000 → 距离门 1.2e9（绝对阈值满足）；基线×1.8=1.8e9，相对不满足
-        d = feed(det, 50, 10000, 10000)
+        det.load_baseline({"range_p95": 1.6e9, "motion_p95": 1.0e7})
+        # range=15000 → 距离门 2.70e9（绝对阈值 >1.8e9 满足）；基线×1.8=2.88e9，相对不满足
+        d = feed(det, 50, 15000, 15000)
         self.assertFalse(d.presence)
 
     def test_baseline_learn_and_roundtrip(self):
