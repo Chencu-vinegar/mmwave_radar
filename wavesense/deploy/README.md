@@ -49,6 +49,93 @@ PYTHONPATH=. python -m src.main --source replay --file /path/to/xxx.gz --mqtt
 PYTHONPATH=. python -m src.main --source simulated --mqtt
 ```
 
+## 单机部署（方案 C：雷达电脑一台全包）
+
+适用场景：雷达板、Python 程序、灯泡控制都在同一台 Windows 雷达电脑上演示，
+不做跨机。灯控有两条路线，按是否需要 HA 仪表盘二选一：
+
+```
+C-1 直连（推荐，免 Docker）：
+DEV202 ──USB──> 雷达电脑 Python（Detector → WizLightController）──UDP 38899──> WiZ 灯泡
+
+C-2 HA/MQTT（可选，需 Docker）：
+DEV202 ──USB──> 雷达电脑 Python（Detector → MqttPublisher）──1883──> Mosquitto
+                                                                      └─> Home Assistant(8123)
+                                                                             └─> WiZ 集成 ──> 灯泡
+```
+
+程序与本机 broker 同机时 `mqtt.host` 保持 `localhost`；直连路线不依赖 broker。
+
+### 准备清单
+
+| 项 | C-1 直连 | C-2 HA/MQTT |
+|---|---|---|
+| 代码 | GitHub `main` 最新 `wavesense/` 整目录；旧压缩包缺新文件，需重新同步 | 同左 |
+| Python | 建议 3.12 / 3.13；3.14 上 numpy 可能暂无对应轮子，报错就换 3.13；勾选 Add to PATH | 同左 |
+| 依赖 | `requirements.txt`（含 `pywizlight`） | 同左 |
+| Docker Desktop | 不需要 | 需要（WSL2 后端），新装后重启一次 |
+| 串口驱动 | CP210x VCP 驱动，设备管理器能看到真实 COMx | 同左 |
+| 灯泡 | WiZ App 配到 2.4GHz WiFi，与电脑同网段；打开 Allow local communication | 同左 |
+
+### 共用步骤
+
+1. **同步代码**：`git clone` 仓库，或页面 Code → Download ZIP 解压；后续命令在 `wavesense/` 目录下执行。
+2. **装 Python 依赖**：
+
+   ```bash
+   cd wavesense
+   python -m pip install -r requirements.txt
+   ```
+
+### C-1：pywizlight 直连（推荐）
+
+1. 启动网页引擎（无雷达先把 `serial` 换成 `simulated` 看效果）：
+
+   ```bash
+   PYTHONPATH=. python -m src.main --web --source serial --port COMx
+   ```
+
+2. 浏览器打开 `http://localhost:8080`，在「灯控联动」卡片填灯泡局域网 IP → 保存 →
+   点测试开灯/关灯；IP 持久化到 `web_data/wiz.json`，下次启动自动载入。
+3. 现场验证：进门/挥手开灯，离开关灯。直连路线 presence 翻转即控灯，**无 HA 延时关灯**；
+   需要无人后延时关灯走 C-2。
+4. 灯泡返回 `-32602 Invalid params`：先在 WiZ App 开本地控制；仍不行导出家庭 JSON，
+   取 `udp_signing_key` 填入 `config/config.yaml` 的 `wiz.signing_key`。
+
+### C-2：Home Assistant + MQTT（可选）
+
+1. 起 broker + HA：
+
+   ```bash
+   cd deploy
+   docker compose up -d
+   docker compose ps
+   ```
+
+   验收：两个容器 `running`；浏览器 `http://localhost:8123` 能进 HA 建账号页面。
+
+2. HA 添加 WiZ 集成、把 `configuration.yaml` 两处 `light.placeholder_light` 回填为真实
+   灯泡实体名（步骤见下文「接入真实灯」），重启 HA。
+
+3. **分层验证**（先不接雷达，逐级排错）：
+   - **Gate 1**：用上一节「手动验证 HA 灯控」的 `mosquitto_pub` 命令发 `1`/`0`，确认灯亮/延时关灯；
+   - **Gate 2**：回放录制文件，验证判定 → MQTT → HA：
+     ```bash
+     PYTHONPATH=. python -m src.main --source replay --file samples/xxx.gz --mqtt
+     ```
+   - **Gate 3**：实时串口闭环；先不带 `--port` 列出串口确认口号，再：
+     ```bash
+     PYTHONPATH=. python -m src.main --source serial --port COMx --mqtt
+     ```
+
+### 注意事项
+
+- Windows PowerShell 里参数写**单行**，不要把 `--port`、`--empty` 等单独换行；跑 Python 前先设 `PYTHONPATH=.`。
+- 开灯触发靠进门/走动动作，静坐弱微动不触发开灯；测试进门挥个手更容易触发。
+- 延时关灯只在 C-2 路线存在：`config.yaml` 的 `light_off_delay_sec` 与 HA 配置里
+  `timer.light_off` 的 `duration` 两处要保持一致；C-1 直连为即时关灯。
+- 本机回环访问不用放行防火墙；手机访问 HA/网页才需放行 8123/8080；C-1 直连需放行 UDP 38899。
+
 ## 接入真实灯：飞利浦 WiZ 全彩灯泡
 
 灯型：PHILIPS Connected by WiZ，WiFi（2.4GHz）+ 蓝牙，无网关。两种控制路线二选一，
